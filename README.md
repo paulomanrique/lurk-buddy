@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="assets/icon.png" width="96" alt="Lurk Buddy" />
-</p>
-
 <h1 align="center">Lurk Buddy</h1>
 
 <p align="center">
