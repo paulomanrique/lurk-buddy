@@ -1,5 +1,7 @@
-import { contextBridge, ipcRenderer } from 'electron';
+import * as electron from 'electron';
 import { IPC_CHANNELS, type LurkBuddyApi } from '../shared/ipc.js';
+
+const { contextBridge, ipcRenderer } = electron;
 
 function installFocusSpoof(): void {
   const redefine = <T>(target: T, key: PropertyKey, getter: () => unknown) => {
@@ -47,7 +49,9 @@ const api: LurkBuddyApi = {
   lives: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.livesList),
     activate: (sessionId) => ipcRenderer.invoke(IPC_CHANNELS.livesActivate, sessionId),
-    close: (sessionId) => ipcRenderer.invoke(IPC_CHANNELS.livesClose, sessionId)
+    close: (sessionId) => ipcRenderer.invoke(IPC_CHANNELS.livesClose, sessionId),
+    setMuted: (sessionId, muted) => ipcRenderer.invoke(IPC_CHANNELS.livesSetMuted, sessionId, muted),
+    layout: (sessionId, bounds) => ipcRenderer.invoke(IPC_CHANNELS.livesLayout, sessionId, bounds)
   },
   logs: {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.logsList)

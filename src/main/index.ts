@@ -1,26 +1,30 @@
-import { app, BrowserWindow, nativeImage } from 'electron';
+import * as electron from 'electron';
+import type { BrowserWindow as ElectronBrowserWindow } from 'electron';
 import { join } from 'node:path';
 import { APP_NAME, BRAND_PRIMARY } from '../shared/constants.js';
 import { AppContext } from './app-context.js';
 
-let mainWindow: BrowserWindow | null = null;
+const { app, BrowserWindow, nativeImage } = electron;
+const mainPreloadPath = join(__dirname, '../preload/index.js');
+let mainWindow: ElectronBrowserWindow | null = null;
 let appContext: AppContext | null = null;
 
-function createWindow(): BrowserWindow {
+function createWindow(): ElectronBrowserWindow {
   const icon = nativeImage.createFromPath(join(process.cwd(), 'src/renderer/assets/logo-circle.svg'));
   const window = new BrowserWindow({
     width: 1600,
     height: 980,
     minWidth: 1200,
     minHeight: 760,
-    backgroundColor: BRAND_PRIMARY,
-    title: APP_NAME,
-    icon,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
+        backgroundColor: BRAND_PRIMARY,
+        title: APP_NAME,
+        icon,
+        webPreferences: {
+            preload: mainPreloadPath,
+            contextIsolation: true,
+            nodeIntegration: false,
+            sandbox: false
+        }
   });
 
   const devServerUrl = process.env.VITE_DEV_SERVER_URL;

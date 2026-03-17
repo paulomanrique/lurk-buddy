@@ -29,6 +29,12 @@ npm run build
 npm run test
 ```
 
+If Electron reports a native module ABI mismatch for `better-sqlite3`, run:
+
+```bash
+npm run rebuild:native
+```
+
 ## Notes
 
 - Sessions are persisted per platform with Electron partitions.

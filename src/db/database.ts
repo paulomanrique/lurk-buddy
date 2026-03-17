@@ -1,9 +1,11 @@
 import Database from 'better-sqlite3';
-import { app } from 'electron';
+import * as electron from 'electron';
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { migrations } from './migrations.js';
 import { DEFAULT_SETTINGS } from '../shared/constants.js';
+
+const { app } = electron;
 
 export function createDatabase(): Database.Database {
   const userDataPath = app.getPath('userData');
