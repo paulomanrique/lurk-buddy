@@ -50,6 +50,9 @@ export class PollingService {
       const channels = this.channels.getEnabled();
       let activeCount = this.sessions.active().length;
       for (const channel of channels) {
+        if (this.sessions.hasActiveSession(channel.id)) {
+          continue;
+        }
         if (!this.shouldPoll(channel)) {
           continue;
         }

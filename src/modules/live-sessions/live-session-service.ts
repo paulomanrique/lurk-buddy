@@ -42,6 +42,10 @@ export class LiveSessionService {
     return this.repository.getActive();
   }
 
+  hasActiveSession(channelId: string): boolean {
+    return this.repository.getByChannelId(channelId) !== null;
+  }
+
   activeList(): LiveSession[] {
     return this.repository.getActive().map((session) => ({
       ...session,
@@ -162,6 +166,16 @@ export class LiveSessionService {
       if (!liveView) {
         continue;
       }
+      const currentUrl = liveView.view.webContents.getURL();
+      if (this.didSessionUrlChange(sessionRow.streamUrl, currentUrl)) {
+        this.logs.write('warn', 'live-sessions', 'Closing tab after URL change', {
+          sessionId: sessionRow.id,
+          previousUrl: sessionRow.streamUrl,
+          currentUrl
+        });
+        await this.close(sessionRow.id);
+        continue;
+      }
       const adapter = adapters[sessionRow.platform];
       const playback = await adapter.extractPlaybackState(liveView.view.webContents);
       playback.containerMuted = liveView.view.webContents.isAudioMuted();
@@ -207,6 +221,19 @@ export class LiveSessionService {
 
   private getMutedState(sessionId: string): boolean {
     return this.mutedState.get(sessionId) ?? true;
+  }
+
+  private didSessionUrlChange(expectedUrl: string, currentUrl: string): boolean {
+    if (!currentUrl) {
+      return false;
+    }
+    try {
+      const expected = new URL(expectedUrl);
+      const current = new URL(currentUrl);
+      return expected.host !== current.host || expected.pathname !== current.pathname;
+    } catch {
+      return currentUrl !== expectedUrl;
+    }
   }
 
   private updateSession(session: LiveSession): LiveSession {
