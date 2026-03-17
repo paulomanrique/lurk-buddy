@@ -29,7 +29,7 @@ export class LiveSessionRepository {
 
   getActive(): LiveSession[] {
     return this.db
-      .prepare("SELECT * FROM live_sessions WHERE status IN ('opening', 'live', 'queued', 'ending')")
+      .prepare("SELECT * FROM live_sessions WHERE status IN ('opening', 'live', 'queued', 'ending', 'recovering')")
       .all()
       .map((row) => hydrate(row as Record<string, unknown>));
   }
@@ -37,7 +37,7 @@ export class LiveSessionRepository {
   getByChannelId(channelId: string): LiveSession | null {
     const row = this.db
       .prepare(
-        "SELECT * FROM live_sessions WHERE channel_id = ? AND status IN ('opening', 'live', 'queued', 'ending') ORDER BY opened_at DESC LIMIT 1"
+        "SELECT * FROM live_sessions WHERE channel_id = ? AND status IN ('opening', 'live', 'queued', 'ending', 'recovering') ORDER BY opened_at DESC LIMIT 1"
       )
       .get(channelId) as Record<string, unknown> | undefined;
     return row ? hydrate(row) : null;
@@ -46,7 +46,7 @@ export class LiveSessionRepository {
   getAllActiveByChannelId(channelId: string): LiveSession[] {
     return this.db
       .prepare(
-        "SELECT * FROM live_sessions WHERE channel_id = ? AND status IN ('opening', 'live', 'queued', 'ending') ORDER BY opened_at DESC"
+        "SELECT * FROM live_sessions WHERE channel_id = ? AND status IN ('opening', 'live', 'queued', 'ending', 'recovering') ORDER BY opened_at DESC"
       )
       .all(channelId)
       .map((row) => hydrate(row as Record<string, unknown>));
@@ -55,7 +55,7 @@ export class LiveSessionRepository {
   getByChannelAndUrl(channelId: string, streamUrl: string): LiveSession | null {
     const row = this.db
       .prepare(
-        "SELECT * FROM live_sessions WHERE channel_id = ? AND stream_url = ? AND status IN ('opening', 'live', 'queued', 'ending') ORDER BY opened_at DESC LIMIT 1"
+        "SELECT * FROM live_sessions WHERE channel_id = ? AND stream_url = ? AND status IN ('opening', 'live', 'queued', 'ending', 'recovering') ORDER BY opened_at DESC LIMIT 1"
       )
       .get(channelId, streamUrl) as Record<string, unknown> | undefined;
     return row ? hydrate(row) : null;

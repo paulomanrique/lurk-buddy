@@ -1,6 +1,6 @@
 export type Platform = 'twitch' | 'youtube' | 'kick';
 
-export type SessionStatus = 'opening' | 'live' | 'ending' | 'closed' | 'error' | 'queued';
+export type SessionStatus = 'opening' | 'live' | 'ending' | 'closed' | 'error' | 'queued' | 'recovering';
 
 export interface Channel {
   id: string;

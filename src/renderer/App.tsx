@@ -160,6 +160,7 @@ export function App() {
   }
 
   const showDashboard = panelOnly || !selectedSession;
+  const liveRecovering = sessions.some((session) => session.status === 'recovering');
 
   return (
     <div className="app-shell">
@@ -253,6 +254,7 @@ export function App() {
 
         {/* Title bar */}
         <div className="title-bar">
+          {liveRecovering && <div className="title-bar-progress" aria-hidden="true" />}
           <div className="breadcrumb">
             <span className="breadcrumb-root">lurk-buddy</span>
             <span className="breadcrumb-sep">›</span>
@@ -300,10 +302,10 @@ export function App() {
             </div>
             <button
               className="ghost-btn"
-              disabled={refreshing}
+              disabled={refreshing || liveRecovering}
               onClick={() => void handleRefresh()}
             >
-              {refreshing ? '[...]' : '[refresh]'}
+              {refreshing ? '[...]' : liveRecovering ? '[recovering]' : '[refresh]'}
             </button>
           </div>
         </div>

@@ -233,7 +233,7 @@ export class LiveSessionService {
         }
         this.updateSession({
           ...sessionRow,
-          status: 'error',
+          status: 'recovering',
           lastError: playback.errorMessage,
           lastHeartbeatAt: nowIso()
         });
