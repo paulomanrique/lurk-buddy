@@ -27,13 +27,17 @@ export const useAppStore = create<AppState>((set, get) => ({
   hydrate: async () => {
     set({ loading: true });
     const snapshot = await window.lurkBuddy.app.snapshot();
+    const previousSelectedSessionId = get().selectedSessionId;
+    const selectedSessionId = previousSelectedSessionId && snapshot.sessions.some((session) => session.id === previousSelectedSessionId)
+      ? previousSelectedSessionId
+      : null;
     set({
       channels: snapshot.channels,
       sessions: snapshot.sessions,
       settings: snapshot.settings,
       logs: snapshot.logs,
       pollingRunning: snapshot.pollingRunning,
-      selectedSessionId: get().selectedSessionId ?? snapshot.sessions[0]?.id ?? null,
+      selectedSessionId,
       loading: false
     });
   },

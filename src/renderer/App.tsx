@@ -59,7 +59,7 @@ export function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrate]);
 
-  const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? sessions[0] ?? null;
+  const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
 
   useEffect(() => {
     if (panelOnly || !selectedSession || !liveCanvasRef.current) {
