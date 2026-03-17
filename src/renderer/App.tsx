@@ -190,7 +190,7 @@ export function App() {
   const showDashboard = panelOnly || !selectedSession;
   const liveRecovering = sessions.some((session) => session.status === 'recovering');
   const showGlobalProgress = refreshing || pollingRunning;
-  const showRefreshStatuses = manualRefreshActive && pollingRunning;
+  const showRefreshStatuses = manualRefreshActive && (refreshing || pollingRunning);
 
   function renderChannelStatus(channelId: string) {
     if (showRefreshStatuses) {
