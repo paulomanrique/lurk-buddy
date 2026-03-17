@@ -29,6 +29,7 @@ export class LiveSessionService {
 
   attachWindow(window: BrowserWindow): void {
     this.hostWindow = window;
+    this.closeStaleSessionsFromPreviousRuns();
   }
 
   list(): LiveSession[] {
@@ -221,6 +222,21 @@ export class LiveSessionService {
 
   private getMutedState(sessionId: string): boolean {
     return this.mutedState.get(sessionId) ?? true;
+  }
+
+  private closeStaleSessionsFromPreviousRuns(): void {
+    for (const sessionRow of this.repository.getActive()) {
+      if (this.views.has(sessionRow.id)) {
+        continue;
+      }
+      this.updateSession({
+        ...sessionRow,
+        status: 'closed',
+        closedAt: nowIso(),
+        lastHeartbeatAt: nowIso(),
+        lastError: 'Session closed during app restart cleanup'
+      });
+    }
   }
 
   private didSessionUrlChange(expectedUrl: string, currentUrl: string): boolean {

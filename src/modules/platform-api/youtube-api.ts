@@ -13,6 +13,12 @@ interface YouTubeSearchResponse {
   }>;
 }
 
+interface YouTubeChannelsResponse {
+  items: Array<{
+    id?: string;
+  }>;
+}
+
 const channelIdCache = new Map<string, string>();
 
 export async function getYouTubeLiveVideo(channelKey: string): Promise<YouTubeSearchResponse['items'][number] | null> {
@@ -51,6 +57,25 @@ async function resolveYouTubeChannelId(channelKey: string): Promise<string | nul
   if (normalized.startsWith('UC')) {
     channelIdCache.set(normalized, normalized);
     return normalized;
+  }
+
+  if (normalized.startsWith('@')) {
+    const url = new URL('https://www.googleapis.com/youtube/v3/channels');
+    url.searchParams.set('part', 'id');
+    url.searchParams.set('forHandle', normalized.slice(1));
+    url.searchParams.set('key', runtimeEnv.youtubeApiKey);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`YouTube handle lookup failed with ${response.status}`);
+    }
+
+    const payload = (await response.json()) as YouTubeChannelsResponse;
+    const channelId = payload.items[0]?.id ?? null;
+    if (channelId) {
+      channelIdCache.set(normalized, channelId);
+    }
+    return channelId;
   }
 
   const url = new URL('https://www.googleapis.com/youtube/v3/search');
