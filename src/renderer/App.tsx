@@ -35,6 +35,7 @@ export function App() {
   const [form, setForm] = useState(initialForm);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const refreshingRef = useRef(false);
   const liveCanvasRef = useRef<HTMLDivElement | null>(null);
   const { seconds: pollCountdown, reset: resetPollCountdown } = usePollCountdown();
 
@@ -123,12 +124,17 @@ export function App() {
   }
 
   async function handleRefresh() {
+    if (refreshingRef.current) {
+      return;
+    }
+    refreshingRef.current = true;
     setRefreshing(true);
     try {
       await window.lurkBuddy.app.runNow();
       resetPollCountdown();
       await hydrate();
     } finally {
+      refreshingRef.current = false;
       setRefreshing(false);
     }
   }
@@ -164,6 +170,7 @@ export function App() {
 
   return (
     <div className="app-shell">
+      {refreshing && <div className="app-progress-bar" aria-hidden="true" />}
 
       {/* ── SESSIONS PANEL ── */}
       <div className="sessions-panel">
@@ -254,7 +261,6 @@ export function App() {
 
         {/* Title bar */}
         <div className="title-bar">
-          {liveRecovering && <div className="title-bar-progress" aria-hidden="true" />}
           <div className="breadcrumb">
             <span className="breadcrumb-root">lurk-buddy</span>
             <span className="breadcrumb-sep">›</span>
@@ -302,10 +308,10 @@ export function App() {
             </div>
             <button
               className="ghost-btn"
-              disabled={refreshing || liveRecovering}
+              disabled={refreshing}
               onClick={() => void handleRefresh()}
             >
-              {refreshing ? '[...]' : liveRecovering ? '[recovering]' : '[refresh]'}
+              {refreshing ? '[refreshing]' : '[refresh]'}
             </button>
           </div>
         </div>

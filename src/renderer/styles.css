@@ -52,9 +52,37 @@ input[type='checkbox'] { accent-color: var(--brand); }
 }
 
 .app-shell {
+  position: relative;
   display: flex;
   height: 100vh;
   overflow: hidden;
+}
+
+.app-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  background: rgba(255, 98, 104, 0.12);
+  z-index: 20;
+}
+
+.app-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -35%;
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, var(--brand) 35%, #ff8f94 100%);
+  animation: app-progress-slide 1.1s ease-in-out infinite;
+}
+
+@keyframes app-progress-slide {
+  0% { left: -35%; }
+  100% { left: 100%; }
 }
 
 /* ── SESSIONS PANEL ──────────────────────────────── */
@@ -259,32 +287,6 @@ input[type='checkbox'] { accent-color: var(--brand); }
   padding: 12px 20px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
-}
-
-.title-bar-progress {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 3px;
-  overflow: hidden;
-  background: rgba(255, 98, 104, 0.12);
-}
-
-.title-bar-progress::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -35%;
-  width: 35%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent 0%, var(--brand) 35%, #ff8f94 100%);
-  animation: title-progress-slide 1.1s ease-in-out infinite;
-}
-
-@keyframes title-progress-slide {
-  0% { left: -35%; }
-  100% { left: 100%; }
 }
 
 .breadcrumb {
