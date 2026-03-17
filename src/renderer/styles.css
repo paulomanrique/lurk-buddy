@@ -235,10 +235,6 @@ h3 {
   padding: 1.25rem;
 }
 
-.log-card {
-  grid-column: 1 / -1;
-}
-
 .channel-form,
 .settings-grid {
   display: grid;
@@ -262,16 +258,14 @@ h3 {
   grid-column: 1 / -1;
 }
 
-.table,
-.log-list {
+.table {
   margin-top: 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
-.table-row,
-.log-row {
+.table-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -354,24 +348,6 @@ h3 {
   backdrop-filter: blur(10px);
   letter-spacing: 0.12em;
   text-transform: uppercase;
-}
-
-.log-level {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.7rem;
-}
-
-.log-level.error {
-  color: #ff777b;
-}
-
-.log-level.warn {
-  color: #ffb454;
-}
-
-.log-level.info {
-  color: #8ae1a5;
 }
 
 @media (max-width: 1100px) {

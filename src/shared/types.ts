@@ -78,7 +78,7 @@ export interface PollRun {
 }
 
 export interface CreateChannelInput {
-  platform: Platform;
+  platform?: Platform;
   value: string;
   displayName?: string;
   pollIntervalMinutes?: number;

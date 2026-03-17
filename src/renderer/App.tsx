@@ -5,7 +5,7 @@ import { EmptyState, PlatformBadge } from './components';
 import { useAppStore } from './store';
 import logoCircleUrl from './assets/logo-circle.svg';
 
-const initialForm = { platform: 'twitch' as const, value: '', displayName: '', pollIntervalMinutes: 5, priority: 100 };
+const initialForm = { value: '', displayName: '', pollIntervalMinutes: 5, priority: 100 };
 
 export function App() {
   const { channels, sessions, settings, logs, selectedSessionId, panelOnly, loading, hydrate, setSelectedSessionId, setPanelOnly } =
@@ -57,7 +57,6 @@ export function App() {
   async function handleCreateChannel(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await window.lurkBuddy.channels.create({
-      platform: form.platform,
       value: form.value,
       displayName: form.displayName || undefined,
       pollIntervalMinutes: Number(form.pollIntervalMinutes),
@@ -205,14 +204,6 @@ export function App() {
               </div>
               <form className="channel-form" onSubmit={handleCreateChannel}>
                 <select
-                  value={form.platform}
-                  onChange={(event) => setForm((current) => ({ ...current, platform: event.target.value as Channel['platform'] }))}
-                >
-                  <option value="twitch">Twitch</option>
-                  <option value="youtube">YouTube</option>
-                  <option value="kick">Kick</option>
-                </select>
-                <input
                   placeholder="@channel or full URL"
                   value={form.value}
                   onChange={(event) => setForm((current) => ({ ...current, value: event.target.value }))}
@@ -350,26 +341,6 @@ export function App() {
               )}
             </div>
 
-            <div className="card log-card">
-              <div className="section-heading">
-                <div>
-                  <p className="eyebrow">Operations</p>
-                  <h3>Recent logs</h3>
-                </div>
-              </div>
-              <div className="log-list">
-                {logs.map((log) => (
-                  <div className="log-row" key={log.id}>
-                    <span className={`log-level ${log.level}`}>{log.level}</span>
-                    <div>
-                      <strong>{log.message}</strong>
-                      <p>{log.scope}</p>
-                    </div>
-                    <span>{new Date(log.createdAt).toLocaleTimeString()}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </section>
         ) : (
           <section className="live-stage-shell">

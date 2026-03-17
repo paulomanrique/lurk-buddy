@@ -19,11 +19,12 @@ export class ChannelService {
 
   create(input: CreateChannelInput): Channel {
     const parsed = createChannelSchema.parse(input);
-    const adapter = adapters[parsed.platform];
+    const platform = parsed.platform ?? this.detectPlatform(parsed.value);
+    const adapter = adapters[platform];
     const normalized = adapter.normalizeInput(parsed.value);
     const channel: Channel = {
       id: makeId(),
-      platform: parsed.platform,
+      platform,
       channelKey: normalized.channelKey,
       displayName: parsed.displayName ?? normalized.displayName,
       url: normalized.url,
@@ -91,5 +92,16 @@ export class ChannelService {
       throw new Error(`Channel not found: ${id}`);
     }
     return channel;
+  }
+
+  private detectPlatform(value: string): Channel['platform'] {
+    const normalized = value.trim().toLowerCase();
+    if (normalized.includes('youtube.com') || normalized.includes('youtu.be') || normalized.startsWith('@')) {
+      return 'youtube';
+    }
+    if (normalized.includes('kick.com')) {
+      return 'kick';
+    }
+    return 'twitch';
   }
 }
