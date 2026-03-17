@@ -16,7 +16,9 @@ const snapshot = {
     enableLowBandwidthBackgroundLives: false
   },
   logs: [],
-  pollingRunning: false
+  pollingRunning: false,
+  pollingChannelId: null,
+  completedPollingChannelIds: []
 };
 
 Object.defineProperty(window, 'lurkBuddy', {

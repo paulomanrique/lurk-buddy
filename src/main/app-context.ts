@@ -143,7 +143,9 @@ export class AppContext {
       sessions: this.sessions.activeList(),
       settings: this.settings.get(),
       logs: this.logs.list(),
-      pollingRunning: this.polling.isRunning()
+      pollingRunning: this.polling.isRunning(),
+      pollingChannelId: this.polling.currentChannelId(),
+      completedPollingChannelIds: this.polling.completedChannelIds()
     }));
 
     ipcMain.handle(IPC_CHANNELS.appRunNow, async () => {

@@ -19,6 +19,8 @@ export class PollingService {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
   private currentTick: Promise<void> | null = null;
+  private currentChannel: string | null = null;
+  private completedChannels = new Set<string>();
   private onStateChanged: (() => void) | null = null;
   private hasCompletedInitialSweep = false;
   private forcePollOnNextTick = false;
@@ -53,6 +55,14 @@ export class PollingService {
     return this.running;
   }
 
+  currentChannelId(): string | null {
+    return this.currentChannel;
+  }
+
+  completedChannelIds(): string[] {
+    return [...this.completedChannels];
+  }
+
   async runNow(): Promise<void> {
     this.forcePollOnNextTick = true;
     await this.tick();
@@ -68,6 +78,8 @@ export class PollingService {
     }
 
     this.running = true;
+    this.currentChannel = null;
+    this.completedChannels.clear();
     this.onStateChanged?.();
     this.currentTick = (async () => {
       const force = this.forcePollOnNextTick;
@@ -75,11 +87,13 @@ export class PollingService {
       try {
         const settings = this.settings.get();
         const channels = this.channels.getEnabled();
+        const channelsToPoll = channels.filter(
+          (channel) => force || this.shouldPoll(channel, this.hasCompletedInitialSweep)
+        );
         let activeCount = this.sessions.active().length;
-        for (const channel of channels) {
-          if (!force && !this.shouldPoll(channel, this.hasCompletedInitialSweep)) {
-            continue;
-          }
+        for (const channel of channelsToPoll) {
+          this.currentChannel = channel.id;
+          this.onStateChanged?.();
           const adapter = adapters[channel.platform];
           try {
             const status = await adapter.getChannelStatus(channel);
@@ -106,6 +120,10 @@ export class PollingService {
               channelId: channel.id,
               error: error instanceof Error ? error.message : String(error)
             });
+          } finally {
+            this.completedChannels.add(channel.id);
+            this.currentChannel = null;
+            this.onStateChanged?.();
           }
         }
         await this.sessions.checkPlaybackAndCloseEnded(settings.closeGracePeriodSeconds);
@@ -113,6 +131,8 @@ export class PollingService {
         this.onStateChanged?.();
       } finally {
         this.running = false;
+        this.currentChannel = null;
+        this.completedChannels.clear();
         this.currentTick = null;
         this.onStateChanged?.();
       }

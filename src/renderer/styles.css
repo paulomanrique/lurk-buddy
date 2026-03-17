@@ -650,6 +650,19 @@ input[type='checkbox'] { accent-color: var(--brand); }
   color: var(--muted);
 }
 
+.ch-status-pending,
+.ch-status-checking {
+  font-size: 10px;
+}
+
+.ch-status-pending {
+  color: var(--muted);
+}
+
+.ch-status-checking {
+  color: var(--brand);
+}
+
 .ch-status-live {
   font-size: 10px;
   color: var(--brand);
@@ -668,6 +681,7 @@ input[type='checkbox'] { accent-color: var(--brand); }
   align-items: center;
   justify-content: space-between;
   width: 100%;
+  gap: 16px;
 }
 
 .action-btn {

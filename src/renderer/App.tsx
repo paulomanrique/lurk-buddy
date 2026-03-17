@@ -35,6 +35,8 @@ export function App() {
     sessions,
     settings,
     pollingRunning,
+    pollingChannelId,
+    completedPollingChannelIds,
     selectedSessionId,
     panelOnly,
     loading,
@@ -46,6 +48,7 @@ export function App() {
   const [form, setForm] = useState(initialForm);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [manualRefreshActive, setManualRefreshActive] = useState(false);
   const refreshingRef = useRef(false);
   const liveCanvasRef = useRef<HTMLDivElement | null>(null);
   const { seconds: pollCountdown, reset: resetPollCountdown } = usePollCountdown();
@@ -140,6 +143,7 @@ export function App() {
     }
     const startedAt = Date.now();
     refreshingRef.current = true;
+    setManualRefreshActive(true);
     setRefreshing(true);
     try {
       await window.lurkBuddy.app.runNow();
@@ -151,6 +155,7 @@ export function App() {
       if (remaining > 0) {
         await new Promise((resolve) => window.setTimeout(resolve, remaining));
       }
+      setManualRefreshActive(false);
       refreshingRef.current = false;
       setRefreshing(false);
     }
@@ -185,6 +190,29 @@ export function App() {
   const showDashboard = panelOnly || !selectedSession;
   const liveRecovering = sessions.some((session) => session.status === 'recovering');
   const showGlobalProgress = refreshing || pollingRunning;
+  const showRefreshStatuses = manualRefreshActive && pollingRunning;
+
+  function renderChannelStatus(channelId: string) {
+    if (showRefreshStatuses) {
+      if (pollingChannelId === channelId) {
+        return <span className="ch-status-checking">checking...</span>;
+      }
+      if (!completedPollingChannelIds.includes(channelId)) {
+        return <span className="ch-status-pending">pending...</span>;
+      }
+    }
+
+    if (sessions.some((session) => session.channelId === channelId)) {
+      return (
+        <>
+          <div className="live-dot" />
+          <span className="ch-status-live">LIVE</span>
+        </>
+      );
+    }
+
+    return <span className="ch-status-offline">offline</span>;
+  }
 
   return (
     <div className="app-shell">
@@ -422,16 +450,7 @@ export function App() {
                         </button>
                       </div>
                       <div className="ch-actions-right">
-                        <div className="ch-status">
-                          {sessions.some((s) => s.channelId === channel.id) ? (
-                            <>
-                              <div className="live-dot" />
-                              <span className="ch-status-live">LIVE</span>
-                            </>
-                          ) : (
-                            <span className="ch-status-offline">offline</span>
-                          )}
-                        </div>
+                        <div className="ch-status">{renderChannelStatus(channel.id)}</div>
                         <div className="ch-actions">
                           <button
                             className="action-btn"

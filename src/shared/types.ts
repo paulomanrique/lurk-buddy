@@ -113,6 +113,8 @@ export interface RendererSnapshot {
   settings: AppSettings;
   logs: EventLog[];
   pollingRunning: boolean;
+  pollingChannelId: string | null;
+  completedPollingChannelIds: string[];
 }
 
 export interface TestChannelResult {
