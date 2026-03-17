@@ -60,6 +60,7 @@ export interface PlaybackState {
   siteMuted: boolean | null;
   containerMuted: boolean;
   ended: boolean;
+  errorMessage?: string | null;
 }
 
 export interface EventLog {

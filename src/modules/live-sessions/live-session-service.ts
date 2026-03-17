@@ -221,13 +221,33 @@ export class LiveSessionService {
       const adapter = adapters[sessionRow.platform];
       const playback = await adapter.extractPlaybackState(liveView.view.webContents);
       playback.containerMuted = liveView.view.webContents.isAudioMuted();
+      if (playback.errorMessage) {
+        if (sessionRow.status !== 'error' || sessionRow.lastError !== playback.errorMessage) {
+          this.logs.write('warn', 'live-sessions', 'Detected recoverable playback error', {
+            sessionId: sessionRow.id,
+            error: playback.errorMessage
+          });
+        }
+        this.updateSession({
+          ...sessionRow,
+          status: 'error',
+          lastError: playback.errorMessage,
+          lastHeartbeatAt: nowIso()
+        });
+        continue;
+      }
       if (adapter.detectSessionEnded(playback)) {
         this.updateSession({ ...sessionRow, status: 'ending', lastHeartbeatAt: nowIso() });
         continue;
       }
       const muted = this.getMutedState(sessionRow.id);
       liveView.view.webContents.setAudioMuted(muted);
-      this.updateSession({ ...sessionRow, status: 'live', lastHeartbeatAt: nowIso() });
+      this.updateSession({
+        ...sessionRow,
+        status: 'live',
+        lastError: null,
+        lastHeartbeatAt: nowIso()
+      });
     }
   }
 
