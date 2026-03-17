@@ -3,6 +3,7 @@ import type {
   Channel,
   CreateChannelInput,
   EventLog,
+  LiveViewBounds,
   LiveSession,
   TestChannelResult,
   UpdateChannelInput
@@ -25,6 +26,8 @@ export interface LurkBuddyApi {
     list: () => Promise<LiveSession[]>;
     activate: (sessionId: string) => Promise<void>;
     close: (sessionId: string) => Promise<void>;
+    setMuted: (sessionId: string, muted: boolean) => Promise<void>;
+    layout: (sessionId: string | null, bounds: LiveViewBounds | null) => Promise<void>;
   };
   logs: {
     list: () => Promise<EventLog[]>;
@@ -52,6 +55,8 @@ export const IPC_CHANNELS = {
   livesList: 'lives:list',
   livesActivate: 'lives:activate',
   livesClose: 'lives:close',
+  livesSetMuted: 'lives:set-muted',
+  livesLayout: 'lives:layout',
   logsList: 'logs:list',
   appSnapshot: 'app:snapshot',
   appStateChanged: 'app:state-changed'

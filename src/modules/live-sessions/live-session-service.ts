@@ -1,11 +1,13 @@
 import type { BrowserWindow, WebContentsView } from 'electron';
-import { session } from 'electron';
-import type { Channel, LiveSession } from '../../shared/types.js';
+import * as electron from 'electron';
+import type { Channel, LiveSession, LiveViewBounds } from '../../shared/types.js';
 import { PLATFORM_HOSTS, PLATFORM_PARTITIONS } from '../../shared/constants.js';
 import { makeId, nowIso } from '../../shared/utils.js';
 import { adapters } from '../../platforms/index.js';
 import { LiveSessionRepository } from './live-session-repository.js';
 import { LogService } from '../logging/log-service.js';
+
+const { session } = electron;
 
 export interface LiveView {
   sessionId: string;
@@ -14,8 +16,10 @@ export interface LiveView {
 
 export class LiveSessionService {
   private readonly views = new Map<string, LiveView>();
+  private readonly mutedState = new Map<string, boolean>();
   private hostWindow: BrowserWindow | null = null;
   private activeSessionId: string | null = null;
+  private liveBounds: LiveViewBounds | null = null;
 
   constructor(
     private readonly repository: LiveSessionRepository,
@@ -28,7 +32,10 @@ export class LiveSessionService {
   }
 
   list(): LiveSession[] {
-    return this.repository.list();
+    return this.repository.list().map((session) => ({
+      ...session,
+      containerMuted: this.getMutedState(session.id)
+    }));
   }
 
   active(): LiveSession[] {
@@ -42,7 +49,7 @@ export class LiveSessionService {
     }
     const partition = PLATFORM_PARTITIONS[channel.platform];
     const viewSession = session.fromPartition(partition);
-    const { WebContentsView } = await import('electron');
+    const { WebContentsView } = electron;
     const view = new WebContentsView({
       webPreferences: {
         preload: this.preloadPath,
@@ -68,16 +75,15 @@ export class LiveSessionService {
     };
     this.repository.save(liveSession);
     this.views.set(liveSession.id, { sessionId: liveSession.id, view });
+    this.mutedState.set(liveSession.id, true);
     this.configureView(view, channel);
     await viewSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
     await view.webContents.loadURL(streamUrl);
     view.webContents.setAudioMuted(true);
     adapters[channel.platform].attachSessionObservers(view.webContents);
     this.updateSession({ ...liveSession, status: 'live', lastHeartbeatAt: nowIso() });
-    if (!this.activeSessionId) {
-      this.activeSessionId = liveSession.id;
-      this.syncViewVisibility();
-    }
+    this.activeSessionId = liveSession.id;
+    this.syncViewVisibility();
     this.logs.write('info', 'live-sessions', 'Opened live tab', {
       channelId: channel.id,
       sessionId: liveSession.id
@@ -87,6 +93,20 @@ export class LiveSessionService {
 
   activate(sessionId: string): void {
     this.activeSessionId = sessionId;
+    this.syncViewVisibility();
+  }
+
+  setMuted(sessionId: string, muted: boolean): void {
+    this.mutedState.set(sessionId, muted);
+    const liveView = this.views.get(sessionId);
+    if (liveView) {
+      liveView.view.webContents.setAudioMuted(muted);
+    }
+  }
+
+  updateLayout(sessionId: string | null, bounds: LiveViewBounds | null): void {
+    this.activeSessionId = sessionId;
+    this.liveBounds = bounds;
     this.syncViewVisibility();
   }
 
@@ -100,6 +120,7 @@ export class LiveSessionService {
       this.hostWindow?.contentView.removeChildView(liveView.view);
       liveView.view.webContents.close();
       this.views.delete(sessionId);
+      this.mutedState.delete(sessionId);
     }
     this.updateSession({
       ...sessionRow,
@@ -132,7 +153,8 @@ export class LiveSessionService {
           this.updateSession({ ...sessionRow, status: 'ending', lastHeartbeatAt: nowIso() });
         }
       } else {
-        liveView.view.webContents.setAudioMuted(true);
+        const muted = this.getMutedState(sessionRow.id);
+        liveView.view.webContents.setAudioMuted(muted);
         this.updateSession({ ...sessionRow, status: 'live', lastHeartbeatAt: nowIso() });
       }
     }
@@ -157,16 +179,19 @@ export class LiveSessionService {
     if (!window) {
       return;
     }
-    const bounds = window.getContentBounds();
     for (const [sessionId, liveView] of this.views) {
-      const visible = sessionId === this.activeSessionId;
+      const visible = sessionId === this.activeSessionId && this.liveBounds !== null;
       liveView.view.setVisible(visible);
       if (visible) {
-        liveView.view.setBounds({ x: 360, y: 88, width: Math.max(320, bounds.width - 380), height: Math.max(240, bounds.height - 108) });
+        liveView.view.setBounds(this.liveBounds!);
       } else {
         liveView.view.setBounds({ x: -10_000, y: -10_000, width: 1, height: 1 });
       }
     }
+  }
+
+  private getMutedState(sessionId: string): boolean {
+    return this.mutedState.get(sessionId) ?? true;
   }
 
   private updateSession(session: LiveSession): LiveSession {

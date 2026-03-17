@@ -66,6 +66,22 @@ export abstract class BasePlatformAdapter implements PlatformAdapter {
   }
 
   protected matchesLiveHtml(html: string): boolean {
-    return /isLiveBroadcast|LIVE|live now|og:video/i.test(html);
+    return /"isLiveBroadcast":true|"isLiveNow":true|"isLive":true/i.test(html);
+  }
+
+  protected extractJsonLdBlocks(html: string): unknown[] {
+    const matches = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi) ?? [];
+    const blocks: unknown[] = [];
+    for (const match of matches) {
+      const json = match
+        .replace(/^<script type="application\/ld\+json">/i, '')
+        .replace(/<\/script>$/i, '');
+      try {
+        blocks.push(JSON.parse(json));
+      } catch {
+        continue;
+      }
+    }
+    return blocks;
   }
 }

@@ -35,7 +35,9 @@ Object.defineProperty(window, 'lurkBuddy', {
     lives: {
       list: vi.fn(),
       activate: vi.fn(),
-      close: vi.fn()
+      close: vi.fn(),
+      setMuted: vi.fn(),
+      layout: vi.fn()
     },
     logs: {
       list: vi.fn()

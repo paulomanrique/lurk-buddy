@@ -120,6 +120,11 @@ h3 {
   border: 1px solid transparent;
 }
 
+.tab-copy,
+.table-copy {
+  min-width: 0;
+}
+
 .tab-item.active {
   border-color: rgba(255, 98, 104, 0.52);
   background: rgba(255, 98, 104, 0.12);
@@ -140,12 +145,27 @@ h3 {
   font-size: 0.92rem;
 }
 
+.tab-item strong,
+.tab-item span,
+.table-row strong,
+.table-row p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tab-actions,
 .table-actions,
+.topbar-actions,
 .topbar-metrics {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+}
+
+.topbar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .badge {
@@ -207,6 +227,7 @@ h3 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1rem;
+  align-items: start;
 }
 
 .card,
@@ -260,6 +281,16 @@ h3 {
   background: rgba(255, 98, 104, 0.04);
 }
 
+.table-row {
+  overflow: hidden;
+}
+
+.table-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
 .settings-grid label {
   display: flex;
   flex-direction: column;
@@ -276,10 +307,16 @@ h3 {
   width: auto;
 }
 
+.live-stage-shell {
+  min-height: 0;
+  flex: 1;
+}
+
 .live-stage-card {
-  min-height: 260px;
+  min-height: calc(100vh - 9.5rem);
   display: grid;
-  place-items: end start;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 1rem;
   background:
     radial-gradient(circle at right top, rgba(255, 98, 104, 0.16), transparent 40%),
     linear-gradient(180deg, rgba(255, 98, 104, 0.06), transparent 35%),
@@ -288,6 +325,16 @@ h3 {
 
 .live-stage-copy {
   max-width: 48rem;
+}
+
+.live-canvas {
+  min-height: 560px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 98, 104, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 98, 104, 0.05), rgba(255, 98, 104, 0.02)),
+    #050505;
+  overflow: hidden;
 }
 
 .empty-state {
@@ -341,5 +388,9 @@ h3 {
   .channel-form,
   .settings-grid {
     grid-template-columns: 1fr;
+  }
+
+  .live-stage-card {
+    min-height: 720px;
   }
 }

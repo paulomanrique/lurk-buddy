@@ -1,7 +1,7 @@
 import type Database from 'better-sqlite3';
-import { BrowserWindow, ipcMain } from 'electron';
+import * as electron from 'electron';
+import type { BrowserWindow } from 'electron';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { createDatabase } from '../db/database.js';
 import { IPC_CHANNELS } from '../shared/ipc.js';
 import { settingsPatchSchema } from '../shared/schemas.js';
@@ -15,8 +15,8 @@ import { PollingService } from '../modules/polling/polling-service.js';
 import { SettingsService } from '../modules/settings/settings-service.js';
 import { StateHub } from './state-hub.js';
 
-const currentDir = fileURLToPath(new URL('.', import.meta.url));
-const preloadPath = join(currentDir, '../preload/index.js');
+const { ipcMain } = electron;
+const preloadPath = join(__dirname, '../preload/index.js');
 
 export class AppContext {
   readonly db: Database.Database;
@@ -85,6 +85,13 @@ export class AppContext {
     ipcMain.handle(IPC_CHANNELS.livesActivate, (_event, sessionId) => {
       this.sessions.activate(sessionId);
       this.stateHub.emit();
+    });
+    ipcMain.handle(IPC_CHANNELS.livesSetMuted, (_event, sessionId, muted) => {
+      this.sessions.setMuted(sessionId, muted);
+      this.stateHub.emit();
+    });
+    ipcMain.handle(IPC_CHANNELS.livesLayout, (_event, sessionId, bounds) => {
+      this.sessions.updateLayout(sessionId, bounds);
     });
     ipcMain.handle(IPC_CHANNELS.livesClose, async (_event, sessionId) => {
       await this.sessions.close(sessionId);

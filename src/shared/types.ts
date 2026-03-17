@@ -28,6 +28,7 @@ export interface LiveSession {
   streamUrl: string;
   lastDetectedTitle: string | null;
   lastError: string | null;
+  containerMuted?: boolean;
 }
 
 export interface AppSettings {
@@ -101,4 +102,11 @@ export interface RendererSnapshot {
 export interface TestChannelResult {
   normalizedUrl: string;
   status: ChannelStatus;
+}
+
+export interface LiveViewBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }

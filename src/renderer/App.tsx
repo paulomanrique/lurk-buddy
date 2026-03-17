@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { AppSettings, Channel } from '@shared/types';
 import { APP_NAME, BRAND_PRIMARY } from '@shared/constants';
 import { EmptyState, PlatformBadge } from './components';
@@ -12,6 +12,7 @@ export function App() {
     useAppStore();
   const [form, setForm] = useState(initialForm);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const liveCanvasRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     void hydrate();
@@ -21,6 +22,37 @@ export function App() {
   }, [hydrate]);
 
   const selectedSession = sessions.find((session) => session.id === selectedSessionId) ?? sessions[0] ?? null;
+
+  useEffect(() => {
+    if (panelOnly || !selectedSession || !liveCanvasRef.current) {
+      void window.lurkBuddy.lives.layout(null, null);
+      return;
+    }
+
+    const updateBounds = () => {
+      if (!liveCanvasRef.current) {
+        return;
+      }
+      const rect = liveCanvasRef.current.getBoundingClientRect();
+      void window.lurkBuddy.lives.layout(selectedSession.id, {
+        x: Math.round(rect.x),
+        y: Math.round(rect.y),
+        width: Math.max(1, Math.round(rect.width)),
+        height: Math.max(1, Math.round(rect.height))
+      });
+    };
+
+    updateBounds();
+    const observer = new ResizeObserver(() => updateBounds());
+    observer.observe(liveCanvasRef.current);
+    window.addEventListener('resize', updateBounds);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateBounds);
+      void window.lurkBuddy.lives.layout(null, null);
+    };
+  }, [panelOnly, selectedSession]);
 
   async function handleCreateChannel(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -57,6 +89,23 @@ export function App() {
 
   async function handleCloseSession(sessionId: string) {
     await window.lurkBuddy.lives.close(sessionId);
+    if (selectedSessionId === sessionId) {
+      setPanelOnly(true);
+    }
+    await hydrate();
+  }
+
+  async function handleSelectSession(sessionId: string) {
+    setPanelOnly(false);
+    setSelectedSessionId(sessionId);
+    await window.lurkBuddy.lives.activate(sessionId);
+  }
+
+  async function handleToggleMute() {
+    if (!selectedSession) {
+      return;
+    }
+    await window.lurkBuddy.lives.setMuted(selectedSession.id, !selectedSession.containerMuted);
     await hydrate();
   }
 
@@ -90,13 +139,10 @@ export function App() {
             sessions.map((session) => (
               <button
                 key={session.id}
-                className={`tab-item ${selectedSession?.id === session.id ? 'active' : ''}`}
-                onClick={async () => {
-                  setSelectedSessionId(session.id);
-                  await window.lurkBuddy.lives.activate(session.id);
-                }}
+                className={`tab-item ${selectedSession?.id === session.id && !panelOnly ? 'active' : ''}`}
+                onClick={() => void handleSelectSession(session.id)}
               >
-                <div>
+                <div className="tab-copy">
                   <strong>{channels.find((channel) => channel.id === session.channelId)?.displayName ?? 'Unknown'}</strong>
                   <span>{session.status}</span>
                 </div>
@@ -124,14 +170,26 @@ export function App() {
             <p className="eyebrow">Status</p>
             <h2>{panelOnly ? 'Management Panel' : selectedSession ? 'Live Session Active' : 'Ready to Lurk'}</h2>
           </div>
-          <div className="topbar-metrics">
-            <div className="metric-card">
-              <strong>{channels.length}</strong>
-              <span>channels tracked</span>
-            </div>
-            <div className="metric-card">
-              <strong>{sessions.length}</strong>
-              <span>tabs active</span>
+          <div className="topbar-actions">
+            {selectedSession && !panelOnly ? (
+              <>
+                <button className="ghost-button" onClick={() => setPanelOnly(true)}>
+                  Back to panel
+                </button>
+                <button className="ghost-button" onClick={() => void handleToggleMute()}>
+                  {selectedSession.containerMuted ? 'Unmute tab' : 'Mute tab'}
+                </button>
+              </>
+            ) : null}
+            <div className="topbar-metrics">
+              <div className="metric-card">
+                <strong>{channels.length}</strong>
+                <span>channels tracked</span>
+              </div>
+              <div className="metric-card">
+                <strong>{sessions.length}</strong>
+                <span>tabs active</span>
+              </div>
             </div>
           </div>
         </header>
@@ -202,7 +260,7 @@ export function App() {
                 ) : (
                   channels.map((channel) => (
                     <div className="table-row" key={channel.id}>
-                      <div>
+                      <div className="table-copy">
                         <strong>{channel.displayName}</strong>
                         <p>{channel.url}</p>
                       </div>
@@ -314,14 +372,16 @@ export function App() {
             </div>
           </section>
         ) : (
-          <section className="live-stage-card">
-            <div className="live-stage-copy">
-              <p className="eyebrow">Live playback is rendered in the native Electron view.</p>
-              <h3>{channels.find((channel) => channel.id === selectedSession.channelId)?.displayName}</h3>
-              <p>
-                The player remains unmuted for the site while the Electron tab is muted at the container level.
-                Focus and visibility spoofing stay enabled in preload.
-              </p>
+          <section className="live-stage-shell">
+            <div className="live-stage-card">
+              <div className="live-stage-copy">
+                <p className="eyebrow">Live playback</p>
+                <h3>{channels.find((channel) => channel.id === selectedSession.channelId)?.displayName}</h3>
+                <p>
+                  The site player stays logically unmuted. The button above only toggles the Electron tab output for this session.
+                </p>
+              </div>
+              <div className="live-canvas" ref={liveCanvasRef} />
             </div>
           </section>
         )}
