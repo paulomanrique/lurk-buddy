@@ -114,10 +114,11 @@ export class LiveSessionService {
     this.repository.save(liveSession);
     this.views.set(liveSession.id, { sessionId: liveSession.id, view, networkMode: 'unlimited' });
     this.mutedState.set(liveSession.id, true);
-    this.configureView(view, channel);
+    this.configureView(view, channel, liveSession.id);
+    this.applyMutedState(liveSession.id);
     await viewSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
     await view.webContents.loadURL(streamUrl);
-    view.webContents.setAudioMuted(true);
+    this.applyMutedState(liveSession.id);
     await this.ensureDebuggerAttached(liveSession.id);
     adapters[channel.platform].attachSessionObservers(view.webContents);
     this.updateSession({ ...liveSession, status: 'live', lastHeartbeatAt: nowIso() });
@@ -141,7 +142,7 @@ export class LiveSessionService {
     this.mutedState.set(sessionId, muted);
     const liveView = this.views.get(sessionId);
     if (liveView) {
-      liveView.view.webContents.setAudioMuted(muted);
+      this.applyMutedState(sessionId);
     }
   }
 
@@ -249,8 +250,7 @@ export class LiveSessionService {
         this.updateSession({ ...sessionRow, status: 'ending', lastHeartbeatAt: nowIso() });
         continue;
       }
-      const muted = this.getMutedState(sessionRow.id);
-      liveView.view.webContents.setAudioMuted(muted);
+      this.applyMutedState(sessionRow.id);
       this.updateSession({
         ...sessionRow,
         status: 'live',
@@ -260,7 +260,7 @@ export class LiveSessionService {
     }
   }
 
-  private configureView(view: WebContentsView, channel: Channel): void {
+  private configureView(view: WebContentsView, channel: Channel, sessionId: string): void {
     view.webContents.setWindowOpenHandler(({ url }) => {
       const allowedHosts = PLATFORM_HOSTS[channel.platform];
       const targetHost = new URL(url).host;
@@ -275,6 +275,15 @@ export class LiveSessionService {
         url: view.webContents.getURL(),
         channelId: channel.id
       });
+    });
+    view.webContents.on('did-start-loading', () => {
+      this.applyMutedState(sessionId);
+    });
+    view.webContents.on('did-finish-load', () => {
+      this.applyMutedState(sessionId);
+    });
+    view.webContents.on('media-started-playing', () => {
+      this.applyMutedState(sessionId);
     });
     view.setBackgroundColor('#000000');
     this.hostWindow?.contentView.addChildView(view);
@@ -300,6 +309,14 @@ export class LiveSessionService {
 
   private getMutedState(sessionId: string): boolean {
     return this.mutedState.get(sessionId) ?? true;
+  }
+
+  private applyMutedState(sessionId: string): void {
+    const liveView = this.views.get(sessionId);
+    if (!liveView || liveView.view.webContents.isDestroyed()) {
+      return;
+    }
+    liveView.view.webContents.setAudioMuted(this.getMutedState(sessionId));
   }
 
   private closeStaleSessionsFromPreviousRuns(): void {

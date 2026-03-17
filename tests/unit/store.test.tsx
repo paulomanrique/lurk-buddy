@@ -16,7 +16,8 @@ const snapshot = {
     enablePerTabMute: true,
     enableLowBandwidthBackgroundLives: false
   },
-  logs: []
+  logs: [],
+  pollingRunning: false
 };
 
 Object.defineProperty(window, 'lurkBuddy', {
@@ -47,7 +48,8 @@ Object.defineProperty(window, 'lurkBuddy', {
     },
     app: {
       snapshot: vi.fn().mockResolvedValue(snapshot),
-      onStateChanged: vi.fn(() => vi.fn())
+      onStateChanged: vi.fn(() => vi.fn()),
+      runNow: vi.fn()
     }
   }
 });

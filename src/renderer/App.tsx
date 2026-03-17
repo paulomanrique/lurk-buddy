@@ -30,7 +30,18 @@ function usePollCountdown() {
 }
 
 export function App() {
-  const { channels, sessions, settings, selectedSessionId, panelOnly, loading, hydrate, setSelectedSessionId, setPanelOnly } =
+  const {
+    channels,
+    sessions,
+    settings,
+    pollingRunning,
+    selectedSessionId,
+    panelOnly,
+    loading,
+    hydrate,
+    setSelectedSessionId,
+    setPanelOnly
+  } =
     useAppStore();
   const [form, setForm] = useState(initialForm);
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -124,9 +135,10 @@ export function App() {
   }
 
   async function handleRefresh() {
-    if (refreshingRef.current) {
+    if (refreshingRef.current || pollingRunning) {
       return;
     }
+    const startedAt = Date.now();
     refreshingRef.current = true;
     setRefreshing(true);
     try {
@@ -134,6 +146,11 @@ export function App() {
       resetPollCountdown();
       await hydrate();
     } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = 600 - elapsed;
+      if (remaining > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, remaining));
+      }
       refreshingRef.current = false;
       setRefreshing(false);
     }
@@ -167,10 +184,11 @@ export function App() {
 
   const showDashboard = panelOnly || !selectedSession;
   const liveRecovering = sessions.some((session) => session.status === 'recovering');
+  const showGlobalProgress = refreshing || pollingRunning;
 
   return (
     <div className="app-shell">
-      {refreshing && <div className="app-progress-bar" aria-hidden="true" />}
+      {showGlobalProgress && <div className="app-progress-bar" aria-hidden="true" />}
 
       {/* ── SESSIONS PANEL ── */}
       <div className="sessions-panel">
@@ -308,10 +326,10 @@ export function App() {
             </div>
             <button
               className="ghost-btn"
-              disabled={refreshing}
+              disabled={showGlobalProgress}
               onClick={() => void handleRefresh()}
             >
-              {refreshing ? '[refreshing]' : '[refresh]'}
+              {showGlobalProgress ? '[refreshing]' : '[refresh]'}
             </button>
           </div>
         </div>

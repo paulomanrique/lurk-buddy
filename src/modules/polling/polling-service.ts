@@ -18,6 +18,7 @@ import { SettingsService } from '../settings/settings-service.js';
 export class PollingService {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
+  private currentTick: Promise<void> | null = null;
   private onStateChanged: (() => void) | null = null;
   private hasCompletedInitialSweep = false;
   private forcePollOnNextTick = false;
@@ -48,60 +49,76 @@ export class PollingService {
     }
   }
 
+  isRunning(): boolean {
+    return this.running;
+  }
+
   async runNow(): Promise<void> {
     this.forcePollOnNextTick = true;
     await this.tick();
+    if (this.forcePollOnNextTick) {
+      await this.tick();
+    }
   }
 
   async tick(): Promise<void> {
     if (this.running) {
+      await this.currentTick;
       return;
     }
+
     this.running = true;
-    const force = this.forcePollOnNextTick;
-    this.forcePollOnNextTick = false;
-    try {
-      const settings = this.settings.get();
-      const channels = this.channels.getEnabled();
-      let activeCount = this.sessions.active().length;
-      for (const channel of channels) {
-        if (!force && !this.shouldPoll(channel, this.hasCompletedInitialSweep)) {
-          continue;
-        }
-        const adapter = adapters[channel.platform];
-        try {
-          const status = await adapter.getChannelStatus(channel);
-          this.channelService.touchPoll(channel.id);
-          if (status.isLive) {
-            this.pollRuns.record(channel.id, 'live', status.title);
-            if (settings.autoOpenLives) {
-              const urls = status.allWatchUrls?.length
-                ? status.allWatchUrls
-                : [adapter.buildWatchUrl(channel, status)];
-              for (const url of urls) {
-                await this.sessions.ensureSession(channel, url);
-                activeCount += 1;
-              }
-              await this.sessions.closeStaleSessionsForChannel(channel.id, urls, settings.closeGracePeriodSeconds);
-            }
-          } else {
-            this.pollRuns.record(channel.id, 'offline');
-            await this.sessions.closeByChannelId(channel.id, settings.closeGracePeriodSeconds);
+    this.onStateChanged?.();
+    this.currentTick = (async () => {
+      const force = this.forcePollOnNextTick;
+      this.forcePollOnNextTick = false;
+      try {
+        const settings = this.settings.get();
+        const channels = this.channels.getEnabled();
+        let activeCount = this.sessions.active().length;
+        for (const channel of channels) {
+          if (!force && !this.shouldPoll(channel, this.hasCompletedInitialSweep)) {
+            continue;
           }
-        } catch (error) {
-          this.pollRuns.record(channel.id, 'error', error instanceof Error ? error.message : 'Unknown error');
-          this.logs.write('error', 'polling', 'Polling failed', {
-            channelId: channel.id,
-            error: error instanceof Error ? error.message : String(error)
-          });
+          const adapter = adapters[channel.platform];
+          try {
+            const status = await adapter.getChannelStatus(channel);
+            this.channelService.touchPoll(channel.id);
+            if (status.isLive) {
+              this.pollRuns.record(channel.id, 'live', status.title);
+              if (settings.autoOpenLives) {
+                const urls = status.allWatchUrls?.length
+                  ? status.allWatchUrls
+                  : [adapter.buildWatchUrl(channel, status)];
+                for (const url of urls) {
+                  await this.sessions.ensureSession(channel, url);
+                  activeCount += 1;
+                }
+                await this.sessions.closeStaleSessionsForChannel(channel.id, urls, settings.closeGracePeriodSeconds);
+              }
+            } else {
+              this.pollRuns.record(channel.id, 'offline');
+              await this.sessions.closeByChannelId(channel.id, settings.closeGracePeriodSeconds);
+            }
+          } catch (error) {
+            this.pollRuns.record(channel.id, 'error', error instanceof Error ? error.message : 'Unknown error');
+            this.logs.write('error', 'polling', 'Polling failed', {
+              channelId: channel.id,
+              error: error instanceof Error ? error.message : String(error)
+            });
+          }
         }
+        await this.sessions.checkPlaybackAndCloseEnded(settings.closeGracePeriodSeconds);
+        this.hasCompletedInitialSweep = true;
+        this.onStateChanged?.();
+      } finally {
+        this.running = false;
+        this.currentTick = null;
+        this.onStateChanged?.();
       }
-      await this.sessions.checkPlaybackAndCloseEnded(settings.closeGracePeriodSeconds);
-      this.hasCompletedInitialSweep = true;
-      this.onStateChanged?.();
-    } finally {
-      this.running = false;
-    }
+    })();
+
+    await this.currentTick;
   }
 
   private shouldPoll(channel: Channel, hasCompletedInitialSweep: boolean): boolean {

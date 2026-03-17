@@ -121,6 +121,7 @@ export interface RendererSnapshot {
   sessions: LiveSession[];
   settings: AppSettings;
   logs: EventLog[];
+  pollingRunning: boolean;
 }
 
 export interface TestChannelResult {

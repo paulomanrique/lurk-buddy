@@ -6,6 +6,7 @@ interface AppState {
   sessions: LiveSession[];
   settings: AppSettings | null;
   logs: EventLog[];
+  pollingRunning: boolean;
   selectedSessionId: string | null;
   panelOnly: boolean;
   loading: boolean;
@@ -19,6 +20,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessions: [],
   settings: null,
   logs: [],
+  pollingRunning: false,
   selectedSessionId: null,
   panelOnly: false,
   loading: true,
@@ -30,6 +32,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       sessions: snapshot.sessions,
       settings: snapshot.settings,
       logs: snapshot.logs,
+      pollingRunning: snapshot.pollingRunning,
       selectedSessionId: get().selectedSessionId ?? snapshot.sessions[0]?.id ?? null,
       loading: false
     });
