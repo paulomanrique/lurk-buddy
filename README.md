@@ -1,59 +1,62 @@
-# Lurk Buddy
+<p align="center">
+  <img src="assets/icon.png" width="96" alt="Lurk Buddy" />
+</p>
 
-Lurk Buddy is an Electron desktop app for automated lurks on Twitch, YouTube and Kick. It keeps a local registry of channels, polls them on an interval, opens live sessions in managed tabs, keeps page audio logically enabled while muting the Electron tab, and spoofs focus and visibility from preload.
+<h1 align="center">Lurk Buddy</h1>
 
-## Stack
+<p align="center">
+  Automatic stream lurking for Twitch, YouTube and Kick.<br/>
+  Never miss a live. Never lift a finger.
+</p>
 
-- Electron
-- React + TypeScript + Vite
-- SQLite via `better-sqlite3`
-- Zustand
-- Zod
-- Vitest + Playwright
+<p align="center">
+  <a href="https://github.com/paulomanrique/lurk-buddy/releases/latest">
+    <img src="https://img.shields.io/github/v/release/paulomanrique/lurk-buddy?style=flat-square&color=FF6268&label=Download" alt="Download latest release" />
+  </a>
+  <img src="https://img.shields.io/badge/platforms-macOS%20%7C%20Windows%20%7C%20Linux-333?style=flat-square" alt="Platforms" />
+  <img src="https://img.shields.io/badge/license-Unlicense-888?style=flat-square" alt="License" />
+</p>
 
-## Current Scope
+---
 
-- Local channel registry with platform normalization
-- Persistent SQLite settings and event logs
-- Polling orchestration with per-channel intervals
-- Managed live sessions in Electron `WebContentsView`
-- Preload focus/visibility spoof
-- Coral/black brand shell for the Lurk Buddy control room
+## What it does
 
-## Scripts
+Lurk Buddy runs in the background and automatically opens live streams the moment they go live — so your view counts, drops, and watch-time always register, without you having to babysit a browser.
 
-```bash
-npm install
-npm run dev
-npm run build
-npm run test
-```
+- **Tracks any channel** on Twitch, YouTube, or Kick
+- **Opens tabs automatically** when a stream starts
+- **Closes them automatically** when it ends
+- **Keeps streams active** even when minimized — focus and visibility spoofed so platforms never know you're away
+- **Muted by default** — audio is logically enabled for the platform but silent on your end
 
-## Environment
+---
 
-Create `.env` from `.env.example` and fill the API credentials.
+## Download
 
-- Twitch:
-  - `TWITCH_CLIENT_ID`
-  - `TWITCH_CLIENT_SECRET`
-  - optional `TWITCH_APP_ACCESS_TOKEN`
-- Kick:
-  - `KICK_CHANNEL_STATUS_URL_TEMPLATE` with `{channel}`
-  - or `KICK_API_BASE_URL` so the app requests `/channels/{channel}`
-  - optional auth headers: `KICK_CLIENT_ID`, `KICK_CLIENT_SECRET`, `KICK_BEARER_TOKEN`
+**[→ Get the latest release](https://github.com/paulomanrique/lurk-buddy/releases/latest)**
 
-If Electron reports a native module ABI mismatch for `better-sqlite3`, run:
+| Platform | Download |
+|---|---|
+| macOS (Apple Silicon) | `.dmg` arm64 |
+| macOS (Intel) | `.dmg` x64 |
+| Windows | `.exe` installer |
+| Linux | `.AppImage` |
 
-```bash
-npm run rebuild:native
-```
+No setup required. Download, install, run.
 
-## Notes
+---
 
-- Sessions are persisted per platform with Electron partitions.
-- Login flows are manual inside the embedded platform views.
-- Platform live detection is currently heuristic and should be hardened per platform before production use.
+## How it works
+
+1. Add a channel by pasting its URL or handle
+2. Lurk Buddy polls it on a fixed schedule (every 5 min for Twitch/Kick, 10 min for YouTube)
+3. When it goes live, a tab opens automatically in the background
+4. When the stream ends, the tab closes — with a 90-second grace period
+
+You stay in control: enable or disable individual channels at any time.
+
+---
 
 ## License
 
-Unlicense. See `UNLICENSE`.
+[Unlicense](UNLICENSE) — public domain.
