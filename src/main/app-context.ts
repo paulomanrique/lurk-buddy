@@ -49,6 +49,7 @@ export class AppContext {
       this.settings,
       this.logs
     );
+    this.sessions.bindStateChange(() => this.stateHub.emit());
     this.polling.bindStateChange(() => this.stateHub.emit());
   }
 

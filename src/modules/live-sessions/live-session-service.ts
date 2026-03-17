@@ -40,6 +40,7 @@ export class LiveSessionService {
   private hostWindow: BrowserWindow | null = null;
   private activeSessionId: string | null = null;
   private liveBounds: LiveViewBounds | null = null;
+  private onStateChanged: (() => void) | null = null;
 
   constructor(
     private readonly repository: LiveSessionRepository,
@@ -51,6 +52,10 @@ export class LiveSessionService {
   attachWindow(window: BrowserWindow): void {
     this.hostWindow = window;
     this.closeStaleSessionsFromPreviousRuns();
+  }
+
+  bindStateChange(callback: () => void): void {
+    this.onStateChanged = callback;
   }
 
   list(): LiveSession[] {
@@ -326,7 +331,9 @@ export class LiveSessionService {
   }
 
   private updateSession(session: LiveSession): LiveSession {
-    return this.repository.update(session);
+    const updated = this.repository.update(session);
+    this.onStateChanged?.();
+    return updated;
   }
 
   private async reloadSessionAfterPlaybackError(sessionId: string, errorMessage: string): Promise<void> {
