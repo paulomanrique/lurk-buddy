@@ -293,7 +293,7 @@ export function App() {
                 back_to_panel
               </button>
             )}
-            {!showDashboard && settings && (
+            {settings && (
               <label className="title-bar-toggle">
                 <span className="title-bar-toggle-label">Save bandwidth</span>
                 <button
