@@ -27,6 +27,12 @@ function resolveWindowIconPath(): string | null {
   return null;
 }
 
+function resolveRendererEntryPath(): string {
+  return app.isPackaged
+    ? join(app.getAppPath(), 'dist/renderer/index.html')
+    : join(process.cwd(), 'dist/renderer/index.html');
+}
+
 function createWindow(): ElectronBrowserWindow {
   const iconPath = resolveWindowIconPath();
   const icon = iconPath ? nativeImage.createFromPath(iconPath) : undefined;
@@ -50,7 +56,7 @@ function createWindow(): ElectronBrowserWindow {
   if (devServerUrl) {
     void window.loadURL(devServerUrl);
   } else {
-    void window.loadFile(join(process.cwd(), 'dist/renderer/index.html'));
+    void window.loadFile(resolveRendererEntryPath());
   }
   return window;
 }
