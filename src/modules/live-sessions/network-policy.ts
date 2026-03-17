@@ -13,5 +13,8 @@ export function resolveLiveNetworkMode(input: ResolveLiveNetworkModeInput): Live
   if (!input.enabled) {
     return 'unlimited';
   }
-  return 'limited';
+  if (!input.liveBounds || !input.activeSessionId) {
+    return 'limited';
+  }
+  return input.sessionId === input.activeSessionId ? 'unlimited' : 'limited';
 }

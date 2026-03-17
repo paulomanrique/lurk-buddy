@@ -24,7 +24,7 @@ describe('resolveLiveNetworkMode', () => {
     ).toBe('limited');
   });
 
-  it('limits the active session too while the test policy is enabled', () => {
+  it('keeps the active session unlimited and limits background sessions when a live area is visible', () => {
     expect(
       resolveLiveNetworkMode({
         enabled: true,
@@ -32,7 +32,7 @@ describe('resolveLiveNetworkMode', () => {
         activeSessionId: 's1',
         liveBounds: { x: 0, y: 0, width: 100, height: 100 }
       })
-    ).toBe('limited');
+    ).toBe('unlimited');
 
     expect(
       resolveLiveNetworkMode({
