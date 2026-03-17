@@ -64,7 +64,8 @@ const api: LurkBuddyApi = {
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.appStateChanged, listener);
       };
-    }
+    },
+    runNow: () => ipcRenderer.invoke(IPC_CHANNELS.appRunNow)
   }
 };
 

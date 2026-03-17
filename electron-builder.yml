@@ -1,0 +1,38 @@
+appId: com.lurkbuddy.app
+productName: Lurk Buddy
+copyright: Copyright © 2024
+
+directories:
+  output: release
+
+files:
+  - dist/**
+  - package.json
+
+extraResources:
+  - from: .env
+    to: .env
+
+asar: true
+
+mac:
+  category: public.app-category.utilities
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+linux:
+  category: Utility
+  target:
+    - target: AppImage
+      arch: [x64, arm64]

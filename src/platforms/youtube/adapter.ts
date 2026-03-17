@@ -1,6 +1,6 @@
 import { BasePlatformAdapter, type NormalizedChannel } from '../base.js';
 import type { Channel, ChannelStatus } from '../../shared/types.js';
-import { getYouTubeLiveVideo } from '../../modules/platform-api/youtube-api.js';
+import { getYouTubeLiveVideos } from '../../modules/platform-api/youtube-api.js';
 
 export class YouTubeAdapter extends BasePlatformAdapter {
   readonly platform = 'youtube' as const;
@@ -20,14 +20,16 @@ export class YouTubeAdapter extends BasePlatformAdapter {
   }
 
   override async getChannelStatus(channel: Channel): Promise<ChannelStatus> {
-    const video = await getYouTubeLiveVideo(channel.channelKey);
-    const isLive = Boolean(video?.id?.videoId);
+    const videos = await getYouTubeLiveVideos(channel.channelKey);
+    const isLive = videos.length > 0;
+    const allWatchUrls = videos.map((v) => `https://www.youtube.com/watch?v=${v.id!.videoId}`);
 
     return {
       isLive,
-      watchUrl: isLive ? `https://www.youtube.com/watch?v=${video!.id!.videoId}` : channel.url,
-      title: video?.snippet?.title ?? (isLive ? `${channel.displayName} is live` : `${channel.displayName} is offline`),
-      raw: video ?? null
+      watchUrl: allWatchUrls[0] ?? channel.url,
+      allWatchUrls,
+      title: videos[0]?.snippet?.title ?? (isLive ? `${channel.displayName} is live` : `${channel.displayName} is offline`),
+      raw: videos
     };
   }
 

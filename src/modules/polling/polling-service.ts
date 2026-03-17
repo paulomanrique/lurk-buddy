@@ -1,6 +1,12 @@
 import type { BrowserWindow } from 'electron';
 import { POLL_TICK_MS } from '../../shared/constants.js';
-import type { Channel } from '../../shared/types.js';
+import type { Channel, Platform } from '../../shared/types.js';
+
+const PLATFORM_POLL_MINUTES: Record<Platform, number> = {
+  twitch: 5,
+  kick: 5,
+  youtube: 10,
+};
 import { adapters } from '../../platforms/index.js';
 import { ChannelService } from '../channels/channel-service.js';
 import { ChannelRepository } from '../channels/channel-repository.js';
@@ -14,6 +20,7 @@ export class PollingService {
   private running = false;
   private onStateChanged: (() => void) | null = null;
   private hasCompletedInitialSweep = false;
+  private forcePollOnNextTick = false;
 
   constructor(
     private readonly channels: ChannelRepository,
@@ -41,20 +48,24 @@ export class PollingService {
     }
   }
 
+  async runNow(): Promise<void> {
+    this.forcePollOnNextTick = true;
+    await this.tick();
+  }
+
   async tick(): Promise<void> {
     if (this.running) {
       return;
     }
     this.running = true;
+    const force = this.forcePollOnNextTick;
+    this.forcePollOnNextTick = false;
     try {
       const settings = this.settings.get();
       const channels = this.channels.getEnabled();
       let activeCount = this.sessions.active().length;
       for (const channel of channels) {
-        if (this.sessions.hasActiveSession(channel.id)) {
-          continue;
-        }
-        if (!this.shouldPoll(channel, this.hasCompletedInitialSweep)) {
+        if (!force && !this.shouldPoll(channel, this.hasCompletedInitialSweep)) {
           continue;
         }
         const adapter = adapters[channel.platform];
@@ -63,9 +74,15 @@ export class PollingService {
           this.channelService.touchPoll(channel.id);
           if (status.isLive) {
             this.pollRuns.record(channel.id, 'live', status.title);
-            if (settings.autoOpenLives && activeCount < settings.maxConcurrentLives) {
-              await this.sessions.ensureSession(channel, adapter.buildWatchUrl(channel, status));
-              activeCount += 1;
+            if (settings.autoOpenLives) {
+              const urls = status.allWatchUrls?.length
+                ? status.allWatchUrls
+                : [adapter.buildWatchUrl(channel, status)];
+              for (const url of urls) {
+                await this.sessions.ensureSession(channel, url);
+                activeCount += 1;
+              }
+              await this.sessions.closeStaleSessionsForChannel(channel.id, urls, settings.closeGracePeriodSeconds);
             }
           } else {
             this.pollRuns.record(channel.id, 'offline');
@@ -95,6 +112,6 @@ export class PollingService {
       return true;
     }
     const elapsed = Date.now() - new Date(channel.lastPollAt).getTime();
-    return elapsed >= channel.pollIntervalMinutes * 60_000;
+    return elapsed >= PLATFORM_POLL_MINUTES[channel.platform] * 60_000;
   }
 }

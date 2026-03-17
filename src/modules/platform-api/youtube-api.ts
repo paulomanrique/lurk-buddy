@@ -1,99 +1,100 @@
-import { runtimeEnv } from '../../main/env.js';
+const USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 
-interface YouTubeSearchResponse {
-  items: Array<{
-    id?: {
-      channelId?: string;
-      videoId?: string;
-    };
-    snippet?: {
-      title?: string;
-      channelTitle?: string;
-    };
-  }>;
+export interface YouTubeLiveVideo {
+  id: { videoId: string };
+  snippet: { title: string };
 }
 
-interface YouTubeChannelsResponse {
-  items: Array<{
-    id?: string;
-  }>;
+export async function getYouTubeLiveVideos(channelKey: string): Promise<YouTubeLiveVideo[]> {
+  const handle = channelKey.startsWith('@') ? channelKey : `@${channelKey}`;
+  const url = `https://www.youtube.com/${handle}/streams`;
+
+  const response = await fetch(url, {
+    headers: {
+      'User-Agent': USER_AGENT,
+      'Accept-Language': 'en-US,en;q=0.9'
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`YouTube page fetch failed with ${response.status}`);
+  }
+
+  const html = await response.text();
+  const data = extractYtInitialData(html);
+  if (!data) return [];
+
+  const results: YouTubeLiveVideo[] = [];
+  findLiveVideos(data, results);
+  return results;
 }
 
-const channelIdCache = new Map<string, string>();
+function extractYtInitialData(html: string): unknown {
+  const marker = 'var ytInitialData = ';
+  const start = html.indexOf(marker);
+  if (start === -1) return null;
 
-export async function getYouTubeLiveVideo(channelKey: string): Promise<YouTubeSearchResponse['items'][number] | null> {
-  if (!runtimeEnv.youtubeApiKey) {
+  const jsonStart = start + marker.length;
+  let depth = 0;
+  let end = jsonStart;
+  for (let i = jsonStart; i < html.length; i++) {
+    if (html[i] === '{') depth++;
+    else if (html[i] === '}') {
+      depth--;
+      if (depth === 0) {
+        end = i + 1;
+        break;
+      }
+    }
+  }
+
+  try {
+    return JSON.parse(html.slice(jsonStart, end)) as unknown;
+  } catch {
     return null;
   }
-
-  const channelId = await resolveYouTubeChannelId(channelKey);
-  if (!channelId) {
-    return null;
-  }
-
-  const url = new URL('https://www.googleapis.com/youtube/v3/search');
-  url.searchParams.set('part', 'snippet');
-  url.searchParams.set('channelId', channelId);
-  url.searchParams.set('eventType', 'live');
-  url.searchParams.set('type', 'video');
-  url.searchParams.set('maxResults', '1');
-  url.searchParams.set('key', runtimeEnv.youtubeApiKey);
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`YouTube search API failed with ${response.status}`);
-  }
-
-  const payload = (await response.json()) as YouTubeSearchResponse;
-  return payload.items[0] ?? null;
 }
 
-async function resolveYouTubeChannelId(channelKey: string): Promise<string | null> {
-  const normalized = channelKey.trim();
-  if (channelIdCache.has(normalized)) {
-    return channelIdCache.get(normalized)!;
+function findLiveVideos(obj: unknown, results: YouTubeLiveVideo[]): void {
+  if (!obj || typeof obj !== 'object') return;
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) findLiveVideos(item, results);
+    return;
   }
 
-  if (normalized.startsWith('UC')) {
-    channelIdCache.set(normalized, normalized);
-    return normalized;
-  }
+  const record = obj as Record<string, unknown>;
 
-  if (normalized.startsWith('@')) {
-    const url = new URL('https://www.googleapis.com/youtube/v3/channels');
-    url.searchParams.set('part', 'id');
-    url.searchParams.set('forHandle', normalized.slice(1));
-    url.searchParams.set('key', runtimeEnv.youtubeApiKey);
+  if (typeof record.videoId === 'string' && Array.isArray(record.thumbnailOverlays)) {
+    const isLive = record.thumbnailOverlays.some((overlay: unknown) => {
+      if (!overlay || typeof overlay !== 'object') return false;
+      const tots = (overlay as Record<string, unknown>)
+        .thumbnailOverlayTimeStatusRenderer as Record<string, unknown> | undefined;
+      return tots?.style === 'LIVE';
+    });
 
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`YouTube handle lookup failed with ${response.status}`);
+    if (isLive) {
+      results.push({
+        id: { videoId: record.videoId },
+        snippet: { title: extractText(record.title) }
+      });
+      return;
     }
-
-    const payload = (await response.json()) as YouTubeChannelsResponse;
-    const channelId = payload.items[0]?.id ?? null;
-    if (channelId) {
-      channelIdCache.set(normalized, channelId);
-    }
-    return channelId;
   }
 
-  const url = new URL('https://www.googleapis.com/youtube/v3/search');
-  url.searchParams.set('part', 'snippet');
-  url.searchParams.set('type', 'channel');
-  url.searchParams.set('maxResults', '1');
-  url.searchParams.set('q', normalized.replace(/^@/, ''));
-  url.searchParams.set('key', runtimeEnv.youtubeApiKey);
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`YouTube channel lookup failed with ${response.status}`);
+  for (const value of Object.values(record)) {
+    findLiveVideos(value, results);
   }
+}
 
-  const payload = (await response.json()) as YouTubeSearchResponse;
-  const channelId = payload.items[0]?.id?.channelId ?? null;
-  if (channelId) {
-    channelIdCache.set(normalized, channelId);
+function extractText(obj: unknown): string {
+  if (!obj || typeof obj !== 'object') return '';
+  const r = obj as Record<string, unknown>;
+  if (typeof r.simpleText === 'string') return r.simpleText;
+  if (Array.isArray(r.runs) && r.runs[0]) {
+    const run = r.runs[0] as Record<string, unknown>;
+    if (typeof run.text === 'string') return run.text;
   }
-  return channelId;
+  return '';
 }

@@ -43,6 +43,24 @@ export class LiveSessionRepository {
     return row ? hydrate(row) : null;
   }
 
+  getAllActiveByChannelId(channelId: string): LiveSession[] {
+    return this.db
+      .prepare(
+        "SELECT * FROM live_sessions WHERE channel_id = ? AND status IN ('opening', 'live', 'queued', 'ending') ORDER BY opened_at DESC"
+      )
+      .all(channelId)
+      .map((row) => hydrate(row as Record<string, unknown>));
+  }
+
+  getByChannelAndUrl(channelId: string, streamUrl: string): LiveSession | null {
+    const row = this.db
+      .prepare(
+        "SELECT * FROM live_sessions WHERE channel_id = ? AND stream_url = ? AND status IN ('opening', 'live', 'queued', 'ending') ORDER BY opened_at DESC LIMIT 1"
+      )
+      .get(channelId, streamUrl) as Record<string, unknown> | undefined;
+    return row ? hydrate(row) : null;
+  }
+
   save(session: LiveSession): LiveSession {
     this.db
       .prepare(

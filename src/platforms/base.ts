@@ -62,7 +62,7 @@ export abstract class BasePlatformAdapter implements PlatformAdapter {
   }
 
   detectSessionEnded(state: PlaybackState): boolean {
-    return false;
+    return state.ended === true;
   }
 
   protected matchesLiveHtml(html: string): boolean {

@@ -40,6 +40,7 @@ export interface LurkBuddyApi {
       logs: EventLog[];
     }>;
     onStateChanged: (callback: () => void) => () => void;
+    runNow: () => Promise<void>;
   };
 }
 
@@ -59,5 +60,6 @@ export const IPC_CHANNELS = {
   livesLayout: 'lives:layout',
   logsList: 'logs:list',
   appSnapshot: 'app:snapshot',
-  appStateChanged: 'app:state-changed'
+  appStateChanged: 'app:state-changed',
+  appRunNow: 'app:run-now'
 } as const;

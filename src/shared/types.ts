@@ -45,6 +45,7 @@ export interface AppSettings {
 export interface ChannelStatus {
   isLive: boolean;
   watchUrl?: string;
+  allWatchUrls?: string[];
   title?: string;
   viewerCount?: number | null;
   thumbnailUrl?: string | null;

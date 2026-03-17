@@ -44,7 +44,7 @@ export class LiveSessionService {
   }
 
   hasActiveSession(channelId: string): boolean {
-    return this.repository.getByChannelId(channelId) !== null;
+    return this.repository.getAllActiveByChannelId(channelId).length > 0;
   }
 
   activeList(): LiveSession[] {
@@ -55,7 +55,7 @@ export class LiveSessionService {
   }
 
   async ensureSession(channel: Channel, streamUrl: string): Promise<LiveSession> {
-    const existing = this.repository.getByChannelId(channel.id);
+    const existing = this.repository.getByChannelAndUrl(channel.id, streamUrl);
     if (existing) {
       return existing;
     }
@@ -148,16 +148,29 @@ export class LiveSessionService {
   }
 
   async closeByChannelId(channelId: string, gracePeriodSeconds: number): Promise<void> {
-    const sessionRow = this.repository.getByChannelId(channelId);
-    if (!sessionRow) {
-      return;
+    const sessions = this.repository.getAllActiveByChannelId(channelId);
+    for (const sessionRow of sessions) {
+      const elapsed = Date.now() - new Date(sessionRow.openedAt).getTime();
+      if (elapsed > gracePeriodSeconds * 1000) {
+        await this.close(sessionRow.id);
+      } else {
+        this.updateSession({ ...sessionRow, status: 'ending', lastHeartbeatAt: nowIso() });
+      }
     }
-    const elapsed = Date.now() - new Date(sessionRow.openedAt).getTime();
-    if (elapsed > gracePeriodSeconds * 1000) {
-      await this.close(sessionRow.id);
-      return;
+  }
+
+  async closeStaleSessionsForChannel(channelId: string, activeUrls: string[], gracePeriodSeconds: number): Promise<void> {
+    const sessions = this.repository.getAllActiveByChannelId(channelId);
+    for (const sessionRow of sessions) {
+      if (!activeUrls.includes(sessionRow.streamUrl)) {
+        const elapsed = Date.now() - new Date(sessionRow.openedAt).getTime();
+        if (elapsed > gracePeriodSeconds * 1000) {
+          await this.close(sessionRow.id);
+        } else {
+          this.updateSession({ ...sessionRow, status: 'ending', lastHeartbeatAt: nowIso() });
+        }
+      }
     }
-    this.updateSession({ ...sessionRow, status: 'ending', lastHeartbeatAt: nowIso() });
   }
 
   async checkPlaybackAndCloseEnded(gracePeriodSeconds: number): Promise<void> {

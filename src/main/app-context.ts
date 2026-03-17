@@ -105,6 +105,10 @@ export class AppContext {
       logs: this.logs.list()
     }));
 
+    ipcMain.handle(IPC_CHANNELS.appRunNow, async () => {
+      await this.polling.runNow();
+    });
+
     this.stateHub.on(() => {
       mainWindow.webContents.send(IPC_CHANNELS.appStateChanged);
     });
