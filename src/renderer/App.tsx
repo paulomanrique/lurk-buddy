@@ -8,7 +8,7 @@ import logoCircleUrl from './assets/logo-circle.svg';
 const initialForm = { value: '', displayName: '', pollIntervalMinutes: 5, priority: 100 };
 
 export function App() {
-  const { channels, sessions, settings, logs, selectedSessionId, panelOnly, loading, hydrate, setSelectedSessionId, setPanelOnly } =
+  const { channels, sessions, settings, selectedSessionId, panelOnly, loading, hydrate, setSelectedSessionId, setPanelOnly } =
     useAppStore();
   const [form, setForm] = useState(initialForm);
   const [testingId, setTestingId] = useState<string | null>(null);
@@ -203,8 +203,8 @@ export function App() {
                 </div>
               </div>
               <form className="channel-form" onSubmit={handleCreateChannel}>
-                <select
-                  placeholder="@channel or full URL"
+                <input
+                  placeholder="Twitch, YouTube or Kick URL"
                   value={form.value}
                   onChange={(event) => setForm((current) => ({ ...current, value: event.target.value }))}
                 />
@@ -246,7 +246,7 @@ export function App() {
                 {channels.length === 0 ? (
                   <EmptyState
                     title="No channels yet"
-                    description="Register Twitch, YouTube or Kick channels and Lurk Buddy will poll them every five minutes by default."
+                    description="Paste a Twitch, YouTube or Kick URL and Lurk Buddy will detect the platform automatically."
                   />
                 ) : (
                   channels.map((channel) => (

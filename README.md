@@ -29,6 +29,19 @@ npm run build
 npm run test
 ```
 
+## Environment
+
+Create `.env` from `.env.example` and fill the API credentials.
+
+- Twitch:
+  - `TWITCH_CLIENT_ID`
+  - `TWITCH_CLIENT_SECRET`
+  - optional `TWITCH_APP_ACCESS_TOKEN`
+- Kick:
+  - `KICK_CHANNEL_STATUS_URL_TEMPLATE` with `{channel}`
+  - or `KICK_API_BASE_URL` so the app requests `/channels/{channel}`
+  - optional auth headers: `KICK_CLIENT_ID`, `KICK_CLIENT_SECRET`, `KICK_BEARER_TOKEN`
+
 If Electron reports a native module ABI mismatch for `better-sqlite3`, run:
 
 ```bash

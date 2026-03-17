@@ -3,6 +3,7 @@ dist
 playwright-report
 test-results
 coverage
+.env
 *.db
 *.db-shm
 *.db-wal

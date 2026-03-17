@@ -243,6 +243,11 @@ h3 {
   margin-top: 1rem;
 }
 
+.channel-form > :first-child,
+.channel-form .primary-button {
+  grid-column: 1 / -1;
+}
+
 .channel-form input,
 .channel-form select,
 .settings-grid input {
@@ -254,9 +259,6 @@ h3 {
   color: #f7efef;
 }
 
-.channel-form .primary-button {
-  grid-column: 1 / -1;
-}
 
 .table {
   margin-top: 1rem;
