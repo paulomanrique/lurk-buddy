@@ -114,7 +114,9 @@ export class LiveSessionService {
     await this.ensureDebuggerAttached(liveSession.id);
     adapters[channel.platform].attachSessionObservers(view.webContents);
     this.updateSession({ ...liveSession, status: 'live', lastHeartbeatAt: nowIso() });
-    this.activeSessionId = liveSession.id;
+    if (!this.activeSessionId || !this.views.has(this.activeSessionId)) {
+      this.activeSessionId = liveSession.id;
+    }
     await this.syncViewVisibility();
     this.logs.write('info', 'live-sessions', 'Opened live tab', {
       channelId: channel.id,
