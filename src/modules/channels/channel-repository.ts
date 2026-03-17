@@ -22,7 +22,7 @@ export class ChannelRepository {
 
   list(): Channel[] {
     return this.db
-      .prepare('SELECT * FROM channels ORDER BY enabled DESC, channel_key COLLATE NOCASE ASC')
+      .prepare("SELECT * FROM channels ORDER BY enabled DESC, LTRIM(channel_key, '@') COLLATE NOCASE ASC")
       .all()
       .map((row) => hydrate(row as Record<string, unknown>));
   }
