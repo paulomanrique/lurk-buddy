@@ -557,7 +557,7 @@ input[type='checkbox'] { accent-color: var(--brand); }
   text-transform: uppercase;
   letter-spacing: 0.14em;
   background: var(--card);
-  grid-template-columns: 24px 180px 1fr 140px;
+  grid-template-columns: 4% 16% 52% 28%;
 }
 
 .ch-row {
@@ -565,9 +565,14 @@ input[type='checkbox'] { accent-color: var(--brand); }
   padding: 10px 16px;
   align-items: center;
   border-bottom: 1px solid var(--border);
-  grid-template-columns: 24px 180px 1fr 140px;
+  grid-template-columns: 4% 16% 52% 28%;
   transition: background 0.15s;
   background: var(--card);
+}
+
+.ch-table-head > span,
+.ch-row > * {
+  min-width: 0;
 }
 
 .ch-row:last-child {
@@ -643,6 +648,7 @@ input[type='checkbox'] { accent-color: var(--brand); }
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
 }
 
 .ch-status-offline {
@@ -682,6 +688,7 @@ input[type='checkbox'] { accent-color: var(--brand); }
   justify-content: space-between;
   width: 100%;
   gap: 16px;
+  min-width: 0;
 }
 
 .action-btn {
