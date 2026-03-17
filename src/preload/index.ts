@@ -40,7 +40,9 @@ const api: LurkBuddyApi = {
     update: (id, patch) => ipcRenderer.invoke(IPC_CHANNELS.channelsUpdate, id, patch),
     delete: (id) => ipcRenderer.invoke(IPC_CHANNELS.channelsDelete, id),
     toggle: (id, enabled) => ipcRenderer.invoke(IPC_CHANNELS.channelsToggle, id, enabled),
-    test: (id) => ipcRenderer.invoke(IPC_CHANNELS.channelsTest, id)
+    test: (id) => ipcRenderer.invoke(IPC_CHANNELS.channelsTest, id),
+    export: () => ipcRenderer.invoke(IPC_CHANNELS.channelsExport),
+    import: () => ipcRenderer.invoke(IPC_CHANNELS.channelsImport)
   },
   settings: {
     get: () => ipcRenderer.invoke(IPC_CHANNELS.settingsGet),

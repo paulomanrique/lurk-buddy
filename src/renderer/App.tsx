@@ -133,6 +133,27 @@ export function App() {
     }
   }
 
+  async function handleExportChannels() {
+    const result = await window.lurkBuddy.channels.export();
+    if (!result.path) {
+      return;
+    }
+    window.alert(`Exported ${result.count} channel${result.count === 1 ? '' : 's'} to:\n${result.path}`);
+  }
+
+  async function handleImportChannels() {
+    const result = await window.lurkBuddy.channels.import();
+    if (!result.path) {
+      return;
+    }
+    await hydrate();
+    window.alert(
+      `Imported ${result.imported} of ${result.total} channel${result.total === 1 ? '' : 's'}.\n` +
+      `Skipped ${result.skipped} duplicate${result.skipped === 1 ? '' : 's'}.\n\n` +
+      `${result.path}`
+    );
+  }
+
   async function handleToggleMute(sessionId: string, muted: boolean) {
     await window.lurkBuddy.lives.setMuted(sessionId, !muted);
     await hydrate();
@@ -274,6 +295,14 @@ export function App() {
             <div className="section-block">
               <div className="sec-header">
                 <span className="sec-label">channel_registry.add</span>
+                <div className="sec-header-actions">
+                  <button className="ghost-btn" onClick={() => void handleImportChannels()}>
+                    import
+                  </button>
+                  <button className="ghost-btn" onClick={() => void handleExportChannels()}>
+                    export
+                  </button>
+                </div>
               </div>
               <div className="sec-body">
                 <form className="channel-form" onSubmit={handleCreateChannel}>
@@ -306,7 +335,7 @@ export function App() {
             </div>
 
             {/* ── CHANNEL TABLE ── */}
-            <div className="section-block">
+            <div className="section-block channels-section">
               <div className="sec-header">
                 <span className="sec-label">queue_control.channels</span>
                 <span className="sec-meta">{channels.length} total</span>
@@ -318,64 +347,66 @@ export function App() {
                 <span style={{ textAlign: 'right' }}>actions</span>
               </div>
               {channels.length === 0 ? (
-                <div className="sec-body">
+                <div className="sec-body channels-body channels-body-empty">
                   <EmptyState
                     title="No channels yet"
                     description="Paste a Twitch, YouTube or Kick URL above and Lurk Buddy will detect the platform automatically."
                   />
                 </div>
               ) : (
-                channels.map((channel) => (
-                  <div key={channel.id} className={`ch-row ${channel.enabled ? '' : 'disabled'}`}>
-                    <PlatformBadge platform={channel.platform} size="icon" />
-                    <div className="ch-name">{channel.displayName}</div>
-                    <div className="ch-url-cell">
-                      <span className="ch-url">{channel.url}</span>
-                      <button
-                        className="ch-copy"
-                        title="Copy URL"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void navigator.clipboard.writeText(channel.url);
-                        }}
-                      >
-                        <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
-                          <path d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="ch-actions-right">
-                      <div className="ch-status">
-                        {sessions.some((s) => s.channelId === channel.id) ? (
-                          <>
-                            <div className="live-dot" />
-                            <span className="ch-status-live">LIVE</span>
-                          </>
-                        ) : (
-                          <span className="ch-status-offline">offline</span>
-                        )}
-                      </div>
-                      <div className="ch-actions">
+                <div className="channels-body">
+                  {channels.map((channel) => (
+                    <div key={channel.id} className={`ch-row ${channel.enabled ? '' : 'disabled'}`}>
+                      <PlatformBadge platform={channel.platform} size="icon" />
+                      <div className="ch-name">{channel.displayName}</div>
+                      <div className="ch-url-cell">
+                        <span className="ch-url">{channel.url}</span>
                         <button
-                          className="action-btn"
-                          disabled={testingId === channel.id}
-                          onClick={() => void handleTestChannel(channel.id)}
+                          className="ch-copy"
+                          title="Copy URL"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void navigator.clipboard.writeText(channel.url);
+                          }}
                         >
-                          {testingId === channel.id ? '[...]' : '[test]'}
-                        </button>
-                        <button className="action-btn" onClick={() => void handleToggle(channel)}>
-                          {channel.enabled ? '[off]' : '[on]'}
-                        </button>
-                        <button
-                          className="action-btn action-btn--danger"
-                          onClick={() => void handleDelete(channel.id)}
-                        >
-                          [rm]
+                          <svg fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
+                            <path d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184"/>
+                          </svg>
                         </button>
                       </div>
+                      <div className="ch-actions-right">
+                        <div className="ch-status">
+                          {sessions.some((s) => s.channelId === channel.id) ? (
+                            <>
+                              <div className="live-dot" />
+                              <span className="ch-status-live">LIVE</span>
+                            </>
+                          ) : (
+                            <span className="ch-status-offline">offline</span>
+                          )}
+                        </div>
+                        <div className="ch-actions">
+                          <button
+                            className="action-btn"
+                            disabled={testingId === channel.id}
+                            onClick={() => void handleTestChannel(channel.id)}
+                          >
+                            {testingId === channel.id ? '[...]' : '[test]'}
+                          </button>
+                          <button className="action-btn" onClick={() => void handleToggle(channel)}>
+                            {channel.enabled ? '[off]' : '[on]'}
+                          </button>
+                          <button
+                            className="action-btn action-btn--danger"
+                            onClick={() => void handleDelete(channel.id)}
+                          >
+                            [rm]
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
 

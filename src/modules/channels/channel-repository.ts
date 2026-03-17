@@ -34,6 +34,13 @@ export class ChannelRepository {
     return row ? hydrate(row) : null;
   }
 
+  getByPlatformAndChannelKey(platform: Channel['platform'], channelKey: string): Channel | null {
+    const row = this.db
+      .prepare('SELECT * FROM channels WHERE platform = ? AND channel_key = ?')
+      .get(platform, channelKey) as Record<string, unknown> | undefined;
+    return row ? hydrate(row) : null;
+  }
+
   getEnabled(): Channel[] {
     return this.db
       .prepare(

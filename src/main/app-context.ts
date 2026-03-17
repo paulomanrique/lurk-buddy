@@ -1,10 +1,11 @@
 import type Database from 'better-sqlite3';
 import * as electron from 'electron';
 import type { BrowserWindow } from 'electron';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createDatabase } from '../db/database.js';
 import { IPC_CHANNELS } from '../shared/ipc.js';
-import { settingsPatchSchema } from '../shared/schemas.js';
+import { channelTransferListSchema, settingsPatchSchema } from '../shared/schemas.js';
 import { ChannelRepository } from '../modules/channels/channel-repository.js';
 import { ChannelService } from '../modules/channels/channel-service.js';
 import { LiveSessionRepository } from '../modules/live-sessions/live-session-repository.js';
@@ -15,7 +16,7 @@ import { PollingService } from '../modules/polling/polling-service.js';
 import { SettingsService } from '../modules/settings/settings-service.js';
 import { StateHub } from './state-hub.js';
 
-const { ipcMain } = electron;
+const { app, dialog, ipcMain } = electron;
 const preloadPath = join(__dirname, '../preload/index.js');
 
 export class AppContext {
@@ -73,6 +74,43 @@ export class AppContext {
       return result;
     });
     ipcMain.handle(IPC_CHANNELS.channelsTest, (_event, id) => this.channelService.test(id));
+    ipcMain.handle(IPC_CHANNELS.channelsExport, async () => {
+      const result = await dialog.showSaveDialog(mainWindow, {
+        title: 'Export channel list',
+        defaultPath: join(app.getPath('documents'), 'lurk-buddy-channels.json'),
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { path: null, count: 0 };
+      }
+
+      const payload = this.channelService.exportItems();
+      await writeFile(result.filePath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+      this.logs.write('info', 'channels', 'Channels exported', {
+        count: payload.length,
+        path: result.filePath
+      });
+      return { path: result.filePath, count: payload.length };
+    });
+    ipcMain.handle(IPC_CHANNELS.channelsImport, async () => {
+      const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Import channel list',
+        properties: ['openFile'],
+        filters: [{ name: 'JSON', extensions: ['json'] }]
+      });
+
+      if (result.canceled || result.filePaths.length === 0) {
+        return { path: null, total: 0, imported: 0, skipped: 0 };
+      }
+
+      const filePath = result.filePaths[0];
+      const raw = await readFile(filePath, 'utf8');
+      const parsed = channelTransferListSchema.parse(JSON.parse(raw));
+      const summary = this.channelService.importItems(parsed);
+      this.stateHub.emit();
+      return { path: filePath, ...summary };
+    });
 
     ipcMain.handle(IPC_CHANNELS.settingsGet, () => this.settings.get());
     ipcMain.handle(IPC_CHANNELS.settingsUpdate, (_event, patch) => {

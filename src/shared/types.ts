@@ -86,6 +86,27 @@ export interface CreateChannelInput {
   priority?: number;
 }
 
+export interface ChannelTransferItem {
+  platform?: Platform;
+  value: string;
+  displayName?: string;
+  enabled?: boolean;
+  pollIntervalMinutes?: number;
+  priority?: number;
+}
+
+export interface ExportChannelsResult {
+  path: string | null;
+  count: number;
+}
+
+export interface ImportChannelsResult {
+  path: string | null;
+  total: number;
+  imported: number;
+  skipped: number;
+}
+
 export interface UpdateChannelInput {
   displayName?: string;
   enabled?: boolean;

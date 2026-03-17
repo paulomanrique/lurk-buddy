@@ -333,7 +333,7 @@ input[type='checkbox'] { accent-color: var(--brand); }
 .main-body {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 16px 20px;
   display: flex;
   flex-direction: column;
@@ -355,6 +355,12 @@ input[type='checkbox'] { accent-color: var(--brand); }
   padding: 8px 16px;
   background: var(--bg);
   border-bottom: 1px solid var(--border);
+}
+
+.sec-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .sec-label {
@@ -380,6 +386,29 @@ input[type='checkbox'] { accent-color: var(--brand); }
 
 .sec-body {
   background: var(--card);
+  padding: 14px 16px;
+}
+
+.channels-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.channels-section .sec-header,
+.channels-section .ch-table-head {
+  flex-shrink: 0;
+}
+
+.channels-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--card);
+}
+
+.channels-body-empty {
   padding: 14px 16px;
 }
 

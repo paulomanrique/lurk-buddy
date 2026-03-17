@@ -1,8 +1,11 @@
 import type {
   AppSettings,
   Channel,
+  ChannelTransferItem,
   CreateChannelInput,
   EventLog,
+  ExportChannelsResult,
+  ImportChannelsResult,
   LiveViewBounds,
   LiveSession,
   TestChannelResult,
@@ -17,6 +20,8 @@ export interface LurkBuddyApi {
     delete: (id: string) => Promise<void>;
     toggle: (id: string, enabled: boolean) => Promise<Channel>;
     test: (id: string) => Promise<TestChannelResult>;
+    export: () => Promise<ExportChannelsResult>;
+    import: () => Promise<ImportChannelsResult>;
   };
   settings: {
     get: () => Promise<AppSettings>;
@@ -51,6 +56,8 @@ export const IPC_CHANNELS = {
   channelsDelete: 'channels:delete',
   channelsToggle: 'channels:toggle',
   channelsTest: 'channels:test',
+  channelsExport: 'channels:export',
+  channelsImport: 'channels:import',
   settingsGet: 'settings:get',
   settingsUpdate: 'settings:update',
   livesList: 'lives:list',
