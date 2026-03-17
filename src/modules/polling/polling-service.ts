@@ -65,6 +65,7 @@ export class PollingService {
             }
           } else {
             this.pollRuns.record(channel.id, 'offline');
+            await this.sessions.closeByChannelId(channel.id, settings.closeGracePeriodSeconds);
           }
         } catch (error) {
           this.pollRuns.record(channel.id, 'error', error instanceof Error ? error.message : 'Unknown error');

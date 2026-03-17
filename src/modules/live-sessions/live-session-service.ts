@@ -42,6 +42,13 @@ export class LiveSessionService {
     return this.repository.getActive();
   }
 
+  activeList(): LiveSession[] {
+    return this.repository.getActive().map((session) => ({
+      ...session,
+      containerMuted: this.getMutedState(session.id)
+    }));
+  }
+
   async ensureSession(channel: Channel, streamUrl: string): Promise<LiveSession> {
     const existing = this.repository.getByChannelId(channel.id);
     if (existing) {
@@ -135,6 +142,19 @@ export class LiveSessionService {
     this.logs.write('info', 'live-sessions', 'Closed live tab', { sessionId });
   }
 
+  async closeByChannelId(channelId: string, gracePeriodSeconds: number): Promise<void> {
+    const sessionRow = this.repository.getByChannelId(channelId);
+    if (!sessionRow) {
+      return;
+    }
+    const elapsed = Date.now() - new Date(sessionRow.openedAt).getTime();
+    if (elapsed > gracePeriodSeconds * 1000) {
+      await this.close(sessionRow.id);
+      return;
+    }
+    this.updateSession({ ...sessionRow, status: 'ending', lastHeartbeatAt: nowIso() });
+  }
+
   async checkPlaybackAndCloseEnded(gracePeriodSeconds: number): Promise<void> {
     const currentSessions = this.active();
     for (const sessionRow of currentSessions) {
@@ -146,17 +166,12 @@ export class LiveSessionService {
       const playback = await adapter.extractPlaybackState(liveView.view.webContents);
       playback.containerMuted = liveView.view.webContents.isAudioMuted();
       if (adapter.detectSessionEnded(playback)) {
-        const elapsed = Date.now() - new Date(sessionRow.openedAt).getTime();
-        if (elapsed > gracePeriodSeconds * 1000) {
-          await this.close(sessionRow.id);
-        } else {
-          this.updateSession({ ...sessionRow, status: 'ending', lastHeartbeatAt: nowIso() });
-        }
-      } else {
-        const muted = this.getMutedState(sessionRow.id);
-        liveView.view.webContents.setAudioMuted(muted);
-        this.updateSession({ ...sessionRow, status: 'live', lastHeartbeatAt: nowIso() });
+        this.updateSession({ ...sessionRow, status: 'ending', lastHeartbeatAt: nowIso() });
+        continue;
       }
+      const muted = this.getMutedState(sessionRow.id);
+      liveView.view.webContents.setAudioMuted(muted);
+      this.updateSession({ ...sessionRow, status: 'live', lastHeartbeatAt: nowIso() });
     }
   }
 

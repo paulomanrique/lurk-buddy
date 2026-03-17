@@ -81,7 +81,7 @@ export class AppContext {
       return result;
     });
 
-    ipcMain.handle(IPC_CHANNELS.livesList, () => this.sessions.list());
+    ipcMain.handle(IPC_CHANNELS.livesList, () => this.sessions.activeList());
     ipcMain.handle(IPC_CHANNELS.livesActivate, (_event, sessionId) => {
       this.sessions.activate(sessionId);
       this.stateHub.emit();
@@ -100,7 +100,7 @@ export class AppContext {
     ipcMain.handle(IPC_CHANNELS.logsList, () => this.logs.list());
     ipcMain.handle(IPC_CHANNELS.appSnapshot, async () => ({
       channels: this.channels.list(),
-      sessions: this.sessions.list(),
+      sessions: this.sessions.activeList(),
       settings: this.settings.get(),
       logs: this.logs.list()
     }));
