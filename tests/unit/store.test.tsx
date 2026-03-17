@@ -7,7 +7,6 @@ const snapshot = {
   sessions: [],
   settings: {
     maxConcurrentLives: 12,
-    defaultPollIntervalMinutes: 5,
     startOnLogin: false,
     minimizeToTray: false,
     autoOpenLives: true,

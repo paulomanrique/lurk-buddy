@@ -36,7 +36,7 @@ export class AppContext {
     this.logs = new LogService(this.db);
     this.settings = new SettingsService(this.db);
     this.channels = new ChannelRepository(this.db);
-    this.channelService = new ChannelService(this.channels, this.settings, this.logs);
+    this.channelService = new ChannelService(this.channels, this.logs);
     this.sessionsRepository = new LiveSessionRepository(this.db);
     this.sessions = new LiveSessionService(this.sessionsRepository, this.logs, preloadPath, this.settings);
     this.pollRuns = new PollRunRepository(this.db);

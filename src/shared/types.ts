@@ -9,8 +9,6 @@ export interface Channel {
   displayName: string;
   url: string;
   enabled: boolean;
-  pollIntervalMinutes: number;
-  priority: number;
   createdAt: string;
   updatedAt: string;
   lastPollAt: string | null;
@@ -33,7 +31,6 @@ export interface LiveSession {
 
 export interface AppSettings {
   maxConcurrentLives: number;
-  defaultPollIntervalMinutes: number;
   startOnLogin: boolean;
   minimizeToTray: boolean;
   autoOpenLives: boolean;
@@ -84,8 +81,6 @@ export interface CreateChannelInput {
   platform?: Platform;
   value: string;
   displayName?: string;
-  pollIntervalMinutes?: number;
-  priority?: number;
 }
 
 export interface ChannelTransferItem {
@@ -93,8 +88,6 @@ export interface ChannelTransferItem {
   value: string;
   displayName?: string;
   enabled?: boolean;
-  pollIntervalMinutes?: number;
-  priority?: number;
 }
 
 export interface ExportChannelsResult {
@@ -112,8 +105,6 @@ export interface ImportChannelsResult {
 export interface UpdateChannelInput {
   displayName?: string;
   enabled?: boolean;
-  pollIntervalMinutes?: number;
-  priority?: number;
 }
 
 export interface RendererSnapshot {
