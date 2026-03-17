@@ -25,6 +25,7 @@ const UNLIMITED_NETWORK_PROFILE = {
   uploadThroughput: -1,
   connectionType: 'wifi'
 } as const;
+const PLAYBACK_ERROR_RELOAD_COOLDOWN_MS = 15_000;
 
 export interface LiveView {
   sessionId: string;
@@ -35,6 +36,7 @@ export interface LiveView {
 export class LiveSessionService {
   private readonly views = new Map<string, LiveView>();
   private readonly mutedState = new Map<string, boolean>();
+  private readonly lastReloadAt = new Map<string, number>();
   private hostWindow: BrowserWindow | null = null;
   private activeSessionId: string | null = null;
   private liveBounds: LiveViewBounds | null = null;
@@ -159,6 +161,7 @@ export class LiveSessionService {
       liveView.view.webContents.close();
       this.views.delete(sessionId);
       this.mutedState.delete(sessionId);
+      this.lastReloadAt.delete(sessionId);
     }
     this.updateSession({
       ...sessionRow,
@@ -234,6 +237,7 @@ export class LiveSessionService {
           lastError: playback.errorMessage,
           lastHeartbeatAt: nowIso()
         });
+        await this.reloadSessionAfterPlaybackError(sessionRow.id, playback.errorMessage);
         continue;
       }
       if (adapter.detectSessionEnded(playback)) {
@@ -323,6 +327,34 @@ export class LiveSessionService {
 
   private updateSession(session: LiveSession): LiveSession {
     return this.repository.update(session);
+  }
+
+  private async reloadSessionAfterPlaybackError(sessionId: string, errorMessage: string): Promise<void> {
+    const liveView = this.views.get(sessionId);
+    if (!liveView || liveView.view.webContents.isLoading()) {
+      return;
+    }
+
+    const now = Date.now();
+    const lastReload = this.lastReloadAt.get(sessionId) ?? 0;
+    if (now - lastReload < PLAYBACK_ERROR_RELOAD_COOLDOWN_MS) {
+      return;
+    }
+
+    this.lastReloadAt.set(sessionId, now);
+    this.logs.write('info', 'live-sessions', 'Reloading player after recoverable playback error', {
+      sessionId,
+      error: errorMessage
+    });
+
+    try {
+      await liveView.view.webContents.reloadIgnoringCache();
+    } catch (error) {
+      this.logs.write('warn', 'live-sessions', 'Failed to reload player after playback error', {
+        sessionId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
   }
 
   private async applyNetworkPolicies(): Promise<void> {

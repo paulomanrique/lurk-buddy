@@ -296,6 +296,18 @@ input[type='checkbox'] { accent-color: var(--brand); }
   font-size: 10px;
 }
 
+.title-bar-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title-bar-toggle-label {
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .title-bar-stat {
   color: var(--muted);
 }
@@ -733,27 +745,6 @@ input[type='checkbox'] { accent-color: var(--brand); }
   border: none;
 }
 
-/* ── SETTINGS ────────────────────────────────────── */
-
-.settings-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 16px;
-}
-
-.setting-field {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.setting-label {
-  font-size: 9px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-
 /* Toggle */
 .toggle-row {
   display: flex;
@@ -775,14 +766,6 @@ input[type='checkbox'] { accent-color: var(--brand); }
 
 .toggle-label-text.off {
   color: var(--muted);
-}
-
-.setting-help {
-  margin-top: 6px;
-  font-size: 10px;
-  color: var(--muted);
-  line-height: 1.5;
-  max-width: 560px;
 }
 
 .toggle {
