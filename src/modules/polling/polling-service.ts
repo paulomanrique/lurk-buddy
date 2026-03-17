@@ -13,6 +13,7 @@ export class PollingService {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
   private onStateChanged: (() => void) | null = null;
+  private hasCompletedInitialSweep = false;
 
   constructor(
     private readonly channels: ChannelRepository,
@@ -53,7 +54,7 @@ export class PollingService {
         if (this.sessions.hasActiveSession(channel.id)) {
           continue;
         }
-        if (!this.shouldPoll(channel)) {
+        if (!this.shouldPoll(channel, this.hasCompletedInitialSweep)) {
           continue;
         }
         const adapter = adapters[channel.platform];
@@ -79,13 +80,17 @@ export class PollingService {
         }
       }
       await this.sessions.checkPlaybackAndCloseEnded(settings.closeGracePeriodSeconds);
+      this.hasCompletedInitialSweep = true;
       this.onStateChanged?.();
     } finally {
       this.running = false;
     }
   }
 
-  private shouldPoll(channel: Channel): boolean {
+  private shouldPoll(channel: Channel, hasCompletedInitialSweep: boolean): boolean {
+    if (!hasCompletedInitialSweep) {
+      return true;
+    }
     if (!channel.lastPollAt) {
       return true;
     }
