@@ -52,6 +52,6 @@ Object.defineProperty(window, 'lurkBuddy', {
 describe('App shell', () => {
   it('renders the brand title', async () => {
     render(<App />);
-    expect(await screen.findByText('Lurk Buddy')).toBeInTheDocument();
+    expect(await screen.findByAltText('Lurk Buddy')).toBeInTheDocument();
   });
 });

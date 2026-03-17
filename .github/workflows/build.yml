@@ -21,22 +21,42 @@ jobs:
           # macOS — macos-latest is Apple Silicon, can cross-compile x64
           - os: macos-latest
             platform: mac
-            arch_flag: ''
+            arch: arm64
+            arch_flag: '--arm64'
+            artifact_glob: release/*.dmg
+
+          - os: macos-latest
+            platform: mac
+            arch: x64
+            arch_flag: '--x64'
+            artifact_glob: release/*.dmg
 
           # Windows x64 + arm64 (cross-compiled)
           - os: windows-latest
             platform: win
-            arch_flag: ''
+            arch: x64
+            arch_flag: '--x64'
+            artifact_glob: release/*.exe
+
+          - os: windows-latest
+            platform: win
+            arch: arm64
+            arch_flag: '--arm64'
+            artifact_glob: release/*.exe
 
           # Linux x64
           - os: ubuntu-latest
             platform: linux
+            arch: x64
             arch_flag: '--x64'
+            artifact_glob: release/*.AppImage
 
           # Linux arm64 — native ARM runner
           - os: ubuntu-24.04-arm
             platform: linux
+            arch: arm64
             arch_flag: '--arm64'
+            artifact_glob: release/*.AppImage
 
     runs-on: ${{ matrix.os }}
 
@@ -93,7 +113,7 @@ jobs:
         run: npm run build
 
       - name: Package
-        run: npx electron-builder --${{ matrix.platform }} ${{ matrix.arch_flag }}
+        run: npm run clean:release && npm exec electron-builder -- --${{ matrix.platform }} ${{ matrix.arch_flag }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -101,12 +121,8 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: lurk-buddy-${{ matrix.platform }}-${{ matrix.os }}
-          path: |
-            release/*.dmg
-            release/*.exe
-            release/*.AppImage
-            release/*.deb
+          name: lurk-buddy-${{ matrix.platform }}-${{ matrix.arch }}
+          path: ${{ matrix.artifact_glob }}
           if-no-files-found: ignore
           retention-days: 30
 
@@ -121,6 +137,22 @@ jobs:
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: Delete existing release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null || true)
+          if [ -z "$ASSETS" ]; then
+            exit 0
+          fi
+          while IFS= read -r asset; do
+            [ -n "$asset" ] || continue
+            gh release delete-asset "$TAG" "$asset" --yes
+          done <<EOF
+          $ASSETS
+          EOF
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2

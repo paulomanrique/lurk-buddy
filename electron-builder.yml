@@ -1,8 +1,10 @@
 appId: com.lurkbuddy.app
 productName: Lurk Buddy
 copyright: Copyright © 2024
+artifactName: Lurk-Buddy-${version}-${arch}.${ext}
 
 directories:
+  buildResources: build
   output: release
 
 files:
@@ -12,19 +14,21 @@ files:
 extraResources:
   - from: .env
     to: .env
+  - from: build/icon.png
+    to: icons/app-icon.png
 
 asar: true
 
 mac:
+  icon: build/icon.icns
   category: public.app-category.utilities
   target:
     - target: dmg
-      arch: [x64, arm64]
 
 win:
+  icon: build/icon.png
   target:
     - target: nsis
-      arch: [x64, arm64]
 
 nsis:
   oneClick: false
@@ -32,7 +36,7 @@ nsis:
   allowToChangeInstallationDirectory: true
 
 linux:
+  icon: build/icons
   category: Utility
   target:
     - target: AppImage
-      arch: [x64, arm64]
