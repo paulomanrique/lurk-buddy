@@ -737,7 +737,7 @@ input[type='checkbox'] { accent-color: var(--brand); }
 
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
 
@@ -775,6 +775,14 @@ input[type='checkbox'] { accent-color: var(--brand); }
 
 .toggle-label-text.off {
   color: var(--muted);
+}
+
+.setting-help {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--muted);
+  line-height: 1.5;
+  max-width: 560px;
 }
 
 .toggle {

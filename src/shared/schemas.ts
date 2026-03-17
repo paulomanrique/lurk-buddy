@@ -37,5 +37,6 @@ export const settingsPatchSchema = z.object({
   autoOpenLives: z.boolean().optional(),
   closeGracePeriodSeconds: z.number().int().min(0).max(600).optional(),
   enableFocusSpoof: z.boolean().optional(),
-  enablePerTabMute: z.boolean().optional()
+  enablePerTabMute: z.boolean().optional(),
+  enableLowBandwidthBackgroundLives: z.boolean().optional()
 });

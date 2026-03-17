@@ -13,7 +13,8 @@ const snapshot = {
     autoOpenLives: true,
     closeGracePeriodSeconds: 90,
     enableFocusSpoof: true,
-    enablePerTabMute: true
+    enablePerTabMute: true,
+    enableLowBandwidthBackgroundLives: false
   },
   logs: []
 };
@@ -26,7 +27,9 @@ Object.defineProperty(window, 'lurkBuddy', {
       update: vi.fn(),
       delete: vi.fn(),
       toggle: vi.fn(),
-      test: vi.fn()
+      test: vi.fn(),
+      export: vi.fn(),
+      import: vi.fn()
     },
     settings: {
       get: vi.fn(),

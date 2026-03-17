@@ -334,6 +334,44 @@ export function App() {
               </div>
             </div>
 
+            {settings && (
+              <div className="section-block">
+                <div className="sec-header">
+                  <span className="sec-label">runtime_policy</span>
+                </div>
+                <div className="sec-body settings-grid">
+                  <div className="toggle-row">
+                    <label className="toggle-label">
+                      <div>
+                        <div className={`toggle-label-text ${settings.enableLowBandwidthBackgroundLives ? '' : 'off'}`}>
+                          low_bandwidth_background_lives
+                        </div>
+                        <div className="setting-help">
+                          Reduces background live bitrate aggressively. The active live stays unrestricted.
+                        </div>
+                      </div>
+                      <button
+                        className={`toggle ${settings.enableLowBandwidthBackgroundLives ? 'on' : 'off'}`}
+                        onClick={() =>
+                          void handleSettingsChange({
+                            enableLowBandwidthBackgroundLives: !settings.enableLowBandwidthBackgroundLives
+                          })
+                        }
+                        title={
+                          settings.enableLowBandwidthBackgroundLives
+                            ? 'Disable low bandwidth mode'
+                            : 'Enable low bandwidth mode'
+                        }
+                        type="button"
+                      >
+                        <div className="toggle-thumb" />
+                      </button>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ── CHANNEL TABLE ── */}
             <div className="section-block channels-section">
               <div className="sec-header">

@@ -40,6 +40,7 @@ export interface AppSettings {
   closeGracePeriodSeconds: number;
   enableFocusSpoof: boolean;
   enablePerTabMute: boolean;
+  enableLowBandwidthBackgroundLives: boolean;
 }
 
 export interface ChannelStatus {

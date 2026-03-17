@@ -19,7 +19,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoOpenLives: true,
   closeGracePeriodSeconds: 90,
   enableFocusSpoof: true,
-  enablePerTabMute: true
+  enablePerTabMute: true,
+  enableLowBandwidthBackgroundLives: false
 };
 
 export const PLATFORM_PARTITIONS: Record<Platform, string> = {
