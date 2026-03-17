@@ -8,6 +8,7 @@ import type {
   ImportChannelsResult,
   LiveViewBounds,
   LiveSession,
+  RendererSnapshot,
   TestChannelResult,
   UpdateChannelInput
 } from './types.js';
@@ -38,12 +39,7 @@ export interface LurkBuddyApi {
     list: () => Promise<EventLog[]>;
   };
   app: {
-    snapshot: () => Promise<{
-      channels: Channel[];
-      sessions: LiveSession[];
-      settings: AppSettings;
-      logs: EventLog[];
-    }>;
+    snapshot: () => Promise<RendererSnapshot>;
     onStateChanged: (callback: () => void) => () => void;
     runNow: () => Promise<void>;
   };

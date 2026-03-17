@@ -49,13 +49,24 @@ export abstract class BasePlatformAdapter implements PlatformAdapter {
     return webContents.executeJavaScript(`
       (() => {
         const media = document.querySelector('video, audio');
+        const pageText = (document.body?.innerText ?? '').replace(/\\s+/g, ' ').trim().slice(0, 4000);
+        const knownErrors = [
+          /there was a network error/i,
+          /error\\s*#\\d+/i,
+          /reload player/i,
+          /playback error/i
+        ];
+        const errorMessage = knownErrors.some((pattern) => pattern.test(pageText))
+          ? pageText
+          : null;
         return {
           playerDetected: Boolean(media),
           pageClaimsFocused: document.hasFocus(),
           pageClaimsVisible: document.visibilityState === 'visible' && document.hidden === false,
           siteMuted: media ? media.muted : null,
           containerMuted: false,
-          ended: media ? (media.ended || media.readyState === 0) : false
+          ended: media ? (media.ended || media.readyState === 0) : false,
+          errorMessage
         };
       })();
     `) as Promise<PlaybackState>;

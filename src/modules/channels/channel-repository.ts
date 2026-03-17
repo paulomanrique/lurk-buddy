@@ -9,8 +9,6 @@ function hydrate(row: Record<string, unknown>): Channel {
     displayName: String(row.display_name),
     url: String(row.url),
     enabled: Boolean(row.enabled),
-    pollIntervalMinutes: Number(row.poll_interval_minutes),
-    priority: Number(row.priority),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
     lastPollAt: row.last_poll_at ? String(row.last_poll_at) : null
@@ -44,7 +42,7 @@ export class ChannelRepository {
   getEnabled(): Channel[] {
     return this.db
       .prepare(
-        'SELECT * FROM channels WHERE enabled = 1 ORDER BY priority DESC, updated_at DESC'
+        'SELECT * FROM channels WHERE enabled = 1 ORDER BY updated_at DESC'
       )
       .all()
       .map((row) => hydrate(row as Record<string, unknown>));
@@ -65,8 +63,8 @@ export class ChannelRepository {
         channel.displayName,
         channel.url,
         channel.enabled ? 1 : 0,
-        channel.pollIntervalMinutes,
-        channel.priority,
+        5,
+        100,
         channel.createdAt,
         channel.updatedAt,
         channel.lastPollAt
@@ -78,15 +76,13 @@ export class ChannelRepository {
     this.db
       .prepare(
         `UPDATE channels
-         SET display_name = ?, url = ?, enabled = ?, poll_interval_minutes = ?, priority = ?, updated_at = ?, last_poll_at = ?
+         SET display_name = ?, url = ?, enabled = ?, updated_at = ?, last_poll_at = ?
          WHERE id = ?`
       )
       .run(
         channel.displayName,
         channel.url,
         channel.enabled ? 1 : 0,
-        channel.pollIntervalMinutes,
-        channel.priority,
         channel.updatedAt,
         channel.lastPollAt,
         channel.id

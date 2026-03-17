@@ -13,13 +13,13 @@ export const BRAND_BORDER_SUBTLE = 'rgba(255, 98, 104, 0.24)';
 
 export const DEFAULT_SETTINGS: AppSettings = {
   maxConcurrentLives: 12,
-  defaultPollIntervalMinutes: 5,
   startOnLogin: false,
   minimizeToTray: false,
   autoOpenLives: true,
   closeGracePeriodSeconds: 90,
   enableFocusSpoof: true,
-  enablePerTabMute: true
+  enablePerTabMute: true,
+  enableLowBandwidthBackgroundLives: false
 };
 
 export const PLATFORM_PARTITIONS: Record<Platform, string> = {

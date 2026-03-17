@@ -10,13 +10,11 @@ import { channelTransferListSchema, createChannelSchema, updateChannelSchema } f
 import { makeId, nowIso } from '../../shared/utils.js';
 import { adapters } from '../../platforms/index.js';
 import { ChannelRepository } from './channel-repository.js';
-import { SettingsService } from '../settings/settings-service.js';
 import { LogService } from '../logging/log-service.js';
 
 export class ChannelService {
   constructor(
     private readonly repository: ChannelRepository,
-    private readonly settings: SettingsService,
     private readonly logs: LogService
   ) {}
 
@@ -29,9 +27,7 @@ export class ChannelService {
       platform: channel.platform,
       value: channel.url,
       displayName: channel.displayName,
-      enabled: channel.enabled,
-      pollIntervalMinutes: channel.pollIntervalMinutes,
-      priority: channel.priority
+      enabled: channel.enabled
     }));
   }
 
@@ -44,9 +40,6 @@ export class ChannelService {
       displayName: parsed.displayName ?? normalized.displayName,
       url: normalized.url,
       enabled: true,
-      pollIntervalMinutes:
-        parsed.pollIntervalMinutes ?? this.settings.get().defaultPollIntervalMinutes,
-      priority: parsed.priority ?? 100,
       createdAt: nowIso(),
       updatedAt: nowIso(),
       lastPollAt: null

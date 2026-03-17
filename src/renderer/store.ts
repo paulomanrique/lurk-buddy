@@ -6,6 +6,10 @@ interface AppState {
   sessions: LiveSession[];
   settings: AppSettings | null;
   logs: EventLog[];
+  initialized: boolean;
+  pollingRunning: boolean;
+  pollingChannelId: string | null;
+  completedPollingChannelIds: string[];
   selectedSessionId: string | null;
   panelOnly: boolean;
   loading: boolean;
@@ -19,18 +23,32 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessions: [],
   settings: null,
   logs: [],
+  initialized: false,
+  pollingRunning: false,
+  pollingChannelId: null,
+  completedPollingChannelIds: [],
   selectedSessionId: null,
   panelOnly: false,
   loading: true,
   hydrate: async () => {
-    set({ loading: true });
+    if (!get().initialized) {
+      set({ loading: true });
+    }
     const snapshot = await window.lurkBuddy.app.snapshot();
+    const previousSelectedSessionId = get().selectedSessionId;
+    const selectedSessionId = previousSelectedSessionId && snapshot.sessions.some((session) => session.id === previousSelectedSessionId)
+      ? previousSelectedSessionId
+      : null;
     set({
       channels: snapshot.channels,
       sessions: snapshot.sessions,
       settings: snapshot.settings,
       logs: snapshot.logs,
-      selectedSessionId: get().selectedSessionId ?? snapshot.sessions[0]?.id ?? null,
+      initialized: true,
+      pollingRunning: snapshot.pollingRunning,
+      pollingChannelId: snapshot.pollingChannelId,
+      completedPollingChannelIds: snapshot.completedPollingChannelIds,
+      selectedSessionId,
       loading: false
     });
   },

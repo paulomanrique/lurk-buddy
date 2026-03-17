@@ -30,11 +30,26 @@ function usePollCountdown() {
 }
 
 export function App() {
-  const { channels, sessions, settings, selectedSessionId, panelOnly, loading, hydrate, setSelectedSessionId, setPanelOnly } =
+  const {
+    channels,
+    sessions,
+    settings,
+    pollingRunning,
+    pollingChannelId,
+    completedPollingChannelIds,
+    selectedSessionId,
+    panelOnly,
+    loading,
+    hydrate,
+    setSelectedSessionId,
+    setPanelOnly
+  } =
     useAppStore();
   const [form, setForm] = useState(initialForm);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [manualRefreshActive, setManualRefreshActive] = useState(false);
+  const refreshingRef = useRef(false);
   const liveCanvasRef = useRef<HTMLDivElement | null>(null);
   const { seconds: pollCountdown, reset: resetPollCountdown } = usePollCountdown();
 
@@ -47,7 +62,7 @@ export function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrate]);
 
-  const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? sessions[0] ?? null;
+  const selectedSession = sessions.find((s) => s.id === selectedSessionId) ?? null;
 
   useEffect(() => {
     if (panelOnly || !selectedSession || !liveCanvasRef.current) {
@@ -123,12 +138,25 @@ export function App() {
   }
 
   async function handleRefresh() {
+    if (refreshingRef.current || pollingRunning) {
+      return;
+    }
+    const startedAt = Date.now();
+    refreshingRef.current = true;
+    setManualRefreshActive(true);
     setRefreshing(true);
     try {
       await window.lurkBuddy.app.runNow();
       resetPollCountdown();
       await hydrate();
     } finally {
+      const elapsed = Date.now() - startedAt;
+      const remaining = 600 - elapsed;
+      if (remaining > 0) {
+        await new Promise((resolve) => window.setTimeout(resolve, remaining));
+      }
+      setManualRefreshActive(false);
+      refreshingRef.current = false;
       setRefreshing(false);
     }
   }
@@ -160,9 +188,35 @@ export function App() {
   }
 
   const showDashboard = panelOnly || !selectedSession;
+  const liveRecovering = sessions.some((session) => session.status === 'recovering');
+  const showGlobalProgress = refreshing || pollingRunning;
+  const showRefreshStatuses = refreshing || pollingRunning;
+
+  function renderChannelStatus(channelId: string) {
+    if (showRefreshStatuses) {
+      if (pollingChannelId === channelId) {
+        return <span className="ch-status-checking">checking...</span>;
+      }
+      if (!completedPollingChannelIds.includes(channelId)) {
+        return <span className="ch-status-pending">pending...</span>;
+      }
+    }
+
+    if (sessions.some((session) => session.channelId === channelId)) {
+      return (
+        <>
+          <div className="live-dot" />
+          <span className="ch-status-live">LIVE</span>
+        </>
+      );
+    }
+
+    return <span className="ch-status-offline">offline</span>;
+  }
 
   return (
     <div className="app-shell">
+      {showGlobalProgress && <div className="app-progress-bar" aria-hidden="true" />}
 
       {/* ── SESSIONS PANEL ── */}
       <div className="sessions-panel">
@@ -267,6 +321,27 @@ export function App() {
                 back_to_panel
               </button>
             )}
+            {settings && (
+              <label className="title-bar-toggle">
+                <span className="title-bar-toggle-label">Save bandwidth</span>
+                <button
+                  className={`toggle ${settings.enableLowBandwidthBackgroundLives ? 'on' : 'off'}`}
+                  onClick={() =>
+                    void handleSettingsChange({
+                      enableLowBandwidthBackgroundLives: !settings.enableLowBandwidthBackgroundLives
+                    })
+                  }
+                  title={
+                    settings.enableLowBandwidthBackgroundLives
+                      ? 'Disable bandwidth saving'
+                      : 'Enable bandwidth saving'
+                  }
+                  type="button"
+                >
+                  <div className="toggle-thumb" />
+                </button>
+              </label>
+            )}
             <span className="title-bar-stat">
               channels <span>{channels.length}</span>
             </span>
@@ -279,10 +354,10 @@ export function App() {
             </div>
             <button
               className="ghost-btn"
-              disabled={refreshing}
+              disabled={showGlobalProgress}
               onClick={() => void handleRefresh()}
             >
-              {refreshing ? '[...]' : '[refresh]'}
+              {showGlobalProgress ? '[refreshing]' : '[refresh]'}
             </button>
           </div>
         </div>
@@ -375,16 +450,7 @@ export function App() {
                         </button>
                       </div>
                       <div className="ch-actions-right">
-                        <div className="ch-status">
-                          {sessions.some((s) => s.channelId === channel.id) ? (
-                            <>
-                              <div className="live-dot" />
-                              <span className="ch-status-live">LIVE</span>
-                            </>
-                          ) : (
-                            <span className="ch-status-offline">offline</span>
-                          )}
-                        </div>
+                        <div className="ch-status">{renderChannelStatus(channel.id)}</div>
                         <div className="ch-actions">
                           <button
                             className="action-btn"

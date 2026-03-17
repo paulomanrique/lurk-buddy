@@ -1,6 +1,6 @@
 export type Platform = 'twitch' | 'youtube' | 'kick';
 
-export type SessionStatus = 'opening' | 'live' | 'ending' | 'closed' | 'error' | 'queued';
+export type SessionStatus = 'opening' | 'live' | 'ending' | 'closed' | 'error' | 'queued' | 'recovering';
 
 export interface Channel {
   id: string;
@@ -9,8 +9,6 @@ export interface Channel {
   displayName: string;
   url: string;
   enabled: boolean;
-  pollIntervalMinutes: number;
-  priority: number;
   createdAt: string;
   updatedAt: string;
   lastPollAt: string | null;
@@ -33,13 +31,13 @@ export interface LiveSession {
 
 export interface AppSettings {
   maxConcurrentLives: number;
-  defaultPollIntervalMinutes: number;
   startOnLogin: boolean;
   minimizeToTray: boolean;
   autoOpenLives: boolean;
   closeGracePeriodSeconds: number;
   enableFocusSpoof: boolean;
   enablePerTabMute: boolean;
+  enableLowBandwidthBackgroundLives: boolean;
 }
 
 export interface ChannelStatus {
@@ -59,6 +57,7 @@ export interface PlaybackState {
   siteMuted: boolean | null;
   containerMuted: boolean;
   ended: boolean;
+  errorMessage?: string | null;
 }
 
 export interface EventLog {
@@ -82,8 +81,6 @@ export interface CreateChannelInput {
   platform?: Platform;
   value: string;
   displayName?: string;
-  pollIntervalMinutes?: number;
-  priority?: number;
 }
 
 export interface ChannelTransferItem {
@@ -91,8 +88,6 @@ export interface ChannelTransferItem {
   value: string;
   displayName?: string;
   enabled?: boolean;
-  pollIntervalMinutes?: number;
-  priority?: number;
 }
 
 export interface ExportChannelsResult {
@@ -110,8 +105,6 @@ export interface ImportChannelsResult {
 export interface UpdateChannelInput {
   displayName?: string;
   enabled?: boolean;
-  pollIntervalMinutes?: number;
-  priority?: number;
 }
 
 export interface RendererSnapshot {
@@ -119,6 +112,9 @@ export interface RendererSnapshot {
   sessions: LiveSession[];
   settings: AppSettings;
   logs: EventLog[];
+  pollingRunning: boolean;
+  pollingChannelId: string | null;
+  completedPollingChannelIds: string[];
 }
 
 export interface TestChannelResult {

@@ -6,30 +6,56 @@ import { makeId, nowIso } from '../../shared/utils.js';
 import { adapters } from '../../platforms/index.js';
 import { LiveSessionRepository } from './live-session-repository.js';
 import { LogService } from '../logging/log-service.js';
+import { SettingsService } from '../settings/settings-service.js';
+import { resolveLiveNetworkMode, type LiveNetworkMode } from './network-policy.js';
 
 const { session } = electron;
+const DEBUGGER_PROTOCOL_VERSION = '1.3';
+const LIMITED_NETWORK_PROFILE = {
+  offline: false,
+  latency: 200,
+  downloadThroughput: 48 * 1024,
+  uploadThroughput: 24 * 1024,
+  connectionType: 'cellular3g'
+} as const;
+const UNLIMITED_NETWORK_PROFILE = {
+  offline: false,
+  latency: 0,
+  downloadThroughput: -1,
+  uploadThroughput: -1,
+  connectionType: 'wifi'
+} as const;
+const PLAYBACK_ERROR_RELOAD_COOLDOWN_MS = 15_000;
 
 export interface LiveView {
   sessionId: string;
   view: WebContentsView;
+  networkMode: LiveNetworkMode;
 }
 
 export class LiveSessionService {
   private readonly views = new Map<string, LiveView>();
   private readonly mutedState = new Map<string, boolean>();
+  private readonly lastReloadAt = new Map<string, number>();
   private hostWindow: BrowserWindow | null = null;
   private activeSessionId: string | null = null;
   private liveBounds: LiveViewBounds | null = null;
+  private onStateChanged: (() => void) | null = null;
 
   constructor(
     private readonly repository: LiveSessionRepository,
     private readonly logs: LogService,
-    private readonly preloadPath: string
+    private readonly preloadPath: string,
+    private readonly settings: SettingsService
   ) {}
 
   attachWindow(window: BrowserWindow): void {
     this.hostWindow = window;
     this.closeStaleSessionsFromPreviousRuns();
+  }
+
+  bindStateChange(callback: () => void): void {
+    this.onStateChanged = callback;
   }
 
   list(): LiveSession[] {
@@ -86,16 +112,20 @@ export class LiveSessionService {
       lastError: null
     };
     this.repository.save(liveSession);
-    this.views.set(liveSession.id, { sessionId: liveSession.id, view });
+    this.views.set(liveSession.id, { sessionId: liveSession.id, view, networkMode: 'unlimited' });
     this.mutedState.set(liveSession.id, true);
-    this.configureView(view, channel);
+    this.configureView(view, channel, liveSession.id);
+    this.applyMutedState(liveSession.id);
     await viewSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
     await view.webContents.loadURL(streamUrl);
-    view.webContents.setAudioMuted(true);
+    this.applyMutedState(liveSession.id);
+    await this.ensureDebuggerAttached(liveSession.id);
     adapters[channel.platform].attachSessionObservers(view.webContents);
     this.updateSession({ ...liveSession, status: 'live', lastHeartbeatAt: nowIso() });
-    this.activeSessionId = liveSession.id;
-    this.syncViewVisibility();
+    if (!this.activeSessionId || !this.views.has(this.activeSessionId)) {
+      this.activeSessionId = liveSession.id;
+    }
+    await this.syncViewVisibility();
     this.logs.write('info', 'live-sessions', 'Opened live tab', {
       channelId: channel.id,
       sessionId: liveSession.id
@@ -103,23 +133,27 @@ export class LiveSessionService {
     return this.repository.getByChannelId(channel.id) ?? liveSession;
   }
 
-  activate(sessionId: string): void {
+  async activate(sessionId: string): Promise<void> {
     this.activeSessionId = sessionId;
-    this.syncViewVisibility();
+    await this.syncViewVisibility();
   }
 
   setMuted(sessionId: string, muted: boolean): void {
     this.mutedState.set(sessionId, muted);
     const liveView = this.views.get(sessionId);
     if (liveView) {
-      liveView.view.webContents.setAudioMuted(muted);
+      this.applyMutedState(sessionId);
     }
   }
 
   updateLayout(sessionId: string | null, bounds: LiveViewBounds | null): void {
     this.activeSessionId = sessionId;
     this.liveBounds = bounds;
-    this.syncViewVisibility();
+    void this.syncViewVisibility();
+  }
+
+  refreshNetworkPolicies(): void {
+    void this.applyNetworkPolicies();
   }
 
   async close(sessionId: string): Promise<void> {
@@ -133,6 +167,7 @@ export class LiveSessionService {
       liveView.view.webContents.close();
       this.views.delete(sessionId);
       this.mutedState.delete(sessionId);
+      this.lastReloadAt.delete(sessionId);
     }
     this.updateSession({
       ...sessionRow,
@@ -142,7 +177,9 @@ export class LiveSessionService {
     });
     if (this.activeSessionId === sessionId) {
       this.activeSessionId = this.active()[0]?.id ?? null;
-      this.syncViewVisibility();
+      await this.syncViewVisibility();
+    } else {
+      await this.applyNetworkPolicies();
     }
     this.logs.write('info', 'live-sessions', 'Closed live tab', { sessionId });
   }
@@ -193,17 +230,37 @@ export class LiveSessionService {
       const adapter = adapters[sessionRow.platform];
       const playback = await adapter.extractPlaybackState(liveView.view.webContents);
       playback.containerMuted = liveView.view.webContents.isAudioMuted();
+      if (playback.errorMessage) {
+        if (sessionRow.status !== 'error' || sessionRow.lastError !== playback.errorMessage) {
+          this.logs.write('warn', 'live-sessions', 'Detected recoverable playback error', {
+            sessionId: sessionRow.id,
+            error: playback.errorMessage
+          });
+        }
+        this.updateSession({
+          ...sessionRow,
+          status: 'recovering',
+          lastError: playback.errorMessage,
+          lastHeartbeatAt: nowIso()
+        });
+        await this.reloadSessionAfterPlaybackError(sessionRow.id, playback.errorMessage);
+        continue;
+      }
       if (adapter.detectSessionEnded(playback)) {
         this.updateSession({ ...sessionRow, status: 'ending', lastHeartbeatAt: nowIso() });
         continue;
       }
-      const muted = this.getMutedState(sessionRow.id);
-      liveView.view.webContents.setAudioMuted(muted);
-      this.updateSession({ ...sessionRow, status: 'live', lastHeartbeatAt: nowIso() });
+      this.applyMutedState(sessionRow.id);
+      this.updateSession({
+        ...sessionRow,
+        status: 'live',
+        lastError: null,
+        lastHeartbeatAt: nowIso()
+      });
     }
   }
 
-  private configureView(view: WebContentsView, channel: Channel): void {
+  private configureView(view: WebContentsView, channel: Channel, sessionId: string): void {
     view.webContents.setWindowOpenHandler(({ url }) => {
       const allowedHosts = PLATFORM_HOSTS[channel.platform];
       const targetHost = new URL(url).host;
@@ -212,12 +269,28 @@ export class LiveSessionService {
       }
       return { action: 'deny' };
     });
+    view.webContents.debugger.on('detach', (_event, reason) => {
+      this.logs.write('warn', 'live-sessions', 'Live debugger detached', {
+        reason,
+        url: view.webContents.getURL(),
+        channelId: channel.id
+      });
+    });
+    view.webContents.on('did-start-loading', () => {
+      this.applyMutedState(sessionId);
+    });
+    view.webContents.on('did-finish-load', () => {
+      this.applyMutedState(sessionId);
+    });
+    view.webContents.on('media-started-playing', () => {
+      this.applyMutedState(sessionId);
+    });
     view.setBackgroundColor('#000000');
     this.hostWindow?.contentView.addChildView(view);
-    this.syncViewVisibility();
+    void this.syncViewVisibility();
   }
 
-  private syncViewVisibility(): void {
+  private async syncViewVisibility(): Promise<void> {
     const window = this.hostWindow;
     if (!window) {
       return;
@@ -231,10 +304,19 @@ export class LiveSessionService {
         liveView.view.setBounds({ x: -10_000, y: -10_000, width: 1, height: 1 });
       }
     }
+    await this.applyNetworkPolicies();
   }
 
   private getMutedState(sessionId: string): boolean {
     return this.mutedState.get(sessionId) ?? true;
+  }
+
+  private applyMutedState(sessionId: string): void {
+    const liveView = this.views.get(sessionId);
+    if (!liveView || liveView.view.webContents.isDestroyed()) {
+      return;
+    }
+    liveView.view.webContents.setAudioMuted(this.getMutedState(sessionId));
   }
 
   private closeStaleSessionsFromPreviousRuns(): void {
@@ -266,6 +348,105 @@ export class LiveSessionService {
   }
 
   private updateSession(session: LiveSession): LiveSession {
-    return this.repository.update(session);
+    const updated = this.repository.update(session);
+    this.onStateChanged?.();
+    return updated;
+  }
+
+  private async reloadSessionAfterPlaybackError(sessionId: string, errorMessage: string): Promise<void> {
+    const liveView = this.views.get(sessionId);
+    if (!liveView || liveView.view.webContents.isLoading()) {
+      return;
+    }
+
+    const now = Date.now();
+    const lastReload = this.lastReloadAt.get(sessionId) ?? 0;
+    if (now - lastReload < PLAYBACK_ERROR_RELOAD_COOLDOWN_MS) {
+      return;
+    }
+
+    this.lastReloadAt.set(sessionId, now);
+    this.logs.write('info', 'live-sessions', 'Reloading player after recoverable playback error', {
+      sessionId,
+      error: errorMessage
+    });
+
+    try {
+      await liveView.view.webContents.reloadIgnoringCache();
+    } catch (error) {
+      this.logs.write('warn', 'live-sessions', 'Failed to reload player after playback error', {
+        sessionId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  private async applyNetworkPolicies(): Promise<void> {
+    const featureEnabled = this.settings.get().enableLowBandwidthBackgroundLives;
+    for (const [sessionId, liveView] of this.views) {
+      const nextMode = resolveLiveNetworkMode({
+        enabled: featureEnabled,
+        sessionId,
+        activeSessionId: this.activeSessionId,
+        liveBounds: this.liveBounds
+      });
+      await this.applyNetworkMode(liveView, nextMode);
+    }
+  }
+
+  private async applyNetworkMode(liveView: LiveView, mode: LiveNetworkMode): Promise<void> {
+    if (liveView.networkMode === mode && liveView.view.webContents.debugger.isAttached()) {
+      return;
+    }
+
+    const attached = await this.ensureDebuggerAttached(liveView.sessionId);
+    if (!attached) {
+      return;
+    }
+
+    try {
+      await liveView.view.webContents.debugger.sendCommand(
+        'Network.emulateNetworkConditions',
+        mode === 'limited' ? LIMITED_NETWORK_PROFILE : UNLIMITED_NETWORK_PROFILE
+      );
+      liveView.networkMode = mode;
+    } catch (error) {
+      this.logs.write('warn', 'live-sessions', 'Failed to apply live network policy', {
+        sessionId: liveView.sessionId,
+        mode,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  private async ensureDebuggerAttached(sessionId: string): Promise<boolean> {
+    const liveView = this.views.get(sessionId);
+    if (!liveView) {
+      return false;
+    }
+
+    const { debugger: webDebugger } = liveView.view.webContents;
+    if (!webDebugger.isAttached()) {
+      try {
+        webDebugger.attach(DEBUGGER_PROTOCOL_VERSION);
+      } catch (error) {
+        this.logs.write('warn', 'live-sessions', 'Failed to attach live debugger', {
+          sessionId,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        return false;
+      }
+    }
+
+    try {
+      await webDebugger.sendCommand('Network.enable');
+      return true;
+    } catch (error) {
+      this.logs.write('warn', 'live-sessions', 'Failed to enable network debugging for live tab', {
+        sessionId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return false;
+    }
   }
 }

@@ -36,9 +36,9 @@ export class AppContext {
     this.logs = new LogService(this.db);
     this.settings = new SettingsService(this.db);
     this.channels = new ChannelRepository(this.db);
-    this.channelService = new ChannelService(this.channels, this.settings, this.logs);
+    this.channelService = new ChannelService(this.channels, this.logs);
     this.sessionsRepository = new LiveSessionRepository(this.db);
-    this.sessions = new LiveSessionService(this.sessionsRepository, this.logs, preloadPath);
+    this.sessions = new LiveSessionService(this.sessionsRepository, this.logs, preloadPath, this.settings);
     this.pollRuns = new PollRunRepository(this.db);
     this.stateHub = new StateHub();
     this.polling = new PollingService(
@@ -49,6 +49,7 @@ export class AppContext {
       this.settings,
       this.logs
     );
+    this.sessions.bindStateChange(() => this.stateHub.emit());
     this.polling.bindStateChange(() => this.stateHub.emit());
   }
 
@@ -115,13 +116,14 @@ export class AppContext {
     ipcMain.handle(IPC_CHANNELS.settingsGet, () => this.settings.get());
     ipcMain.handle(IPC_CHANNELS.settingsUpdate, (_event, patch) => {
       const result = this.settings.update(settingsPatchSchema.parse(patch));
+      this.sessions.refreshNetworkPolicies();
       this.stateHub.emit();
       return result;
     });
 
     ipcMain.handle(IPC_CHANNELS.livesList, () => this.sessions.activeList());
-    ipcMain.handle(IPC_CHANNELS.livesActivate, (_event, sessionId) => {
-      this.sessions.activate(sessionId);
+    ipcMain.handle(IPC_CHANNELS.livesActivate, async (_event, sessionId) => {
+      await this.sessions.activate(sessionId);
       this.stateHub.emit();
     });
     ipcMain.handle(IPC_CHANNELS.livesSetMuted, (_event, sessionId, muted) => {
@@ -140,7 +142,10 @@ export class AppContext {
       channels: this.channels.list(),
       sessions: this.sessions.activeList(),
       settings: this.settings.get(),
-      logs: this.logs.list()
+      logs: this.logs.list(),
+      pollingRunning: this.polling.isRunning(),
+      pollingChannelId: this.polling.currentChannelId(),
+      completedPollingChannelIds: this.polling.completedChannelIds()
     }));
 
     ipcMain.handle(IPC_CHANNELS.appRunNow, async () => {

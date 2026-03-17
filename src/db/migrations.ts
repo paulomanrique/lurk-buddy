@@ -7,8 +7,6 @@ export const migrations = [
       display_name TEXT NOT NULL,
       url TEXT NOT NULL,
       enabled INTEGER NOT NULL DEFAULT 1,
-      poll_interval_minutes INTEGER NOT NULL,
-      priority INTEGER NOT NULL DEFAULT 100,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       last_poll_at TEXT

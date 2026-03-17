@@ -7,15 +7,18 @@ const snapshot = {
   sessions: [],
   settings: {
     maxConcurrentLives: 12,
-    defaultPollIntervalMinutes: 5,
     startOnLogin: false,
     minimizeToTray: false,
     autoOpenLives: true,
     closeGracePeriodSeconds: 90,
     enableFocusSpoof: true,
-    enablePerTabMute: true
+    enablePerTabMute: true,
+    enableLowBandwidthBackgroundLives: false
   },
-  logs: []
+  logs: [],
+  pollingRunning: false,
+  pollingChannelId: null,
+  completedPollingChannelIds: []
 };
 
 Object.defineProperty(window, 'lurkBuddy', {
@@ -26,7 +29,9 @@ Object.defineProperty(window, 'lurkBuddy', {
       update: vi.fn(),
       delete: vi.fn(),
       toggle: vi.fn(),
-      test: vi.fn()
+      test: vi.fn(),
+      export: vi.fn(),
+      import: vi.fn()
     },
     settings: {
       get: vi.fn(),
@@ -44,7 +49,8 @@ Object.defineProperty(window, 'lurkBuddy', {
     },
     app: {
       snapshot: vi.fn().mockResolvedValue(snapshot),
-      onStateChanged: vi.fn(() => vi.fn())
+      onStateChanged: vi.fn(() => vi.fn()),
+      runNow: vi.fn()
     }
   }
 });
