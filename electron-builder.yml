@@ -22,6 +22,7 @@ asar: true
 mac:
   icon: build/icon.icns
   category: public.app-category.utilities
+  notarize: true
   target:
     - target: dmg
 
