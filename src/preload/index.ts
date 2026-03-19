@@ -4,6 +4,55 @@ import { IPC_CHANNELS, type LurkBuddyApi } from '../shared/ipc.js';
 const { contextBridge, ipcRenderer } = electron;
 
 function installFocusSpoof(): void {
+  const injectIntoPageContext = () => {
+    const script = document.createElement('script');
+    script.textContent = `
+      (() => {
+        const redefine = (target, key, getter) => {
+          try {
+            Object.defineProperty(target, key, {
+              configurable: true,
+              enumerable: false,
+              get: getter
+            });
+          } catch {}
+        };
+
+        redefine(Document.prototype, 'hidden', () => false);
+        redefine(document, 'hidden', () => false);
+        redefine(Document.prototype, 'visibilityState', () => 'visible');
+        redefine(document, 'visibilityState', () => 'visible');
+        document.hasFocus = () => true;
+
+        const blockedEvents = new Set(['visibilitychange', 'webkitvisibilitychange', 'blur', 'focusout', 'pagehide']);
+        const patchAddEventListener = (target) => {
+          const original = target.addEventListener.bind(target);
+          target.addEventListener = (type, listener, options) => {
+            if (blockedEvents.has(type)) {
+              return;
+            }
+            return original(type, listener, options);
+          };
+        };
+
+        patchAddEventListener(document);
+        patchAddEventListener(window);
+
+        const pulseFocus = () => {
+          window.dispatchEvent(new Event('focus'));
+          window.dispatchEvent(new Event('pageshow'));
+          document.dispatchEvent(new Event('visibilitychange'));
+          document.dispatchEvent(new Event('focusin'));
+        };
+
+        pulseFocus();
+        setInterval(pulseFocus, 1500);
+      })();
+    `;
+    (document.documentElement ?? document.head ?? document.body)?.appendChild(script);
+    script.remove();
+  };
+
   const redefine = <T>(target: T, key: PropertyKey, getter: () => unknown) => {
     Object.defineProperty(target, key, {
       configurable: true,
@@ -29,6 +78,12 @@ function installFocusSpoof(): void {
     window.dispatchEvent(new Event('focus'));
     document.dispatchEvent(new Event('visibilitychange'));
   });
+
+  if (document.documentElement) {
+    injectIntoPageContext();
+  } else {
+    window.addEventListener('DOMContentLoaded', injectIntoPageContext, { once: true });
+  }
 }
 
 installFocusSpoof();

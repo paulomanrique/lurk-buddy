@@ -94,7 +94,8 @@ export class LiveSessionService {
         partition,
         contextIsolation: true,
         nodeIntegration: false,
-        sandbox: false
+        sandbox: false,
+        autoplayPolicy: 'no-user-gesture-required'
       }
     });
     const tabId = makeId();
