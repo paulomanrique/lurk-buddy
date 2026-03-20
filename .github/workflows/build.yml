@@ -144,7 +144,14 @@ jobs:
             } >> "$GITHUB_ENV"
           fi
 
-      - name: Package
+      - name: Package (tag release)
+        if: startsWith(github.ref, 'refs/tags/')
+        run: npm run clean:release && npm exec electron-builder -- --${{ matrix.platform }} ${{ matrix.arch_flag }} --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Package (manual build)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: npm run clean:release && npm exec electron-builder -- --${{ matrix.platform }} ${{ matrix.arch_flag }} --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -156,38 +163,3 @@ jobs:
           path: ${{ matrix.artifact_glob }}
           if-no-files-found: ignore
           retention-days: 30
-
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/')
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          merge-multiple: true
-
-      - name: Delete existing release assets
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ github.ref_name }}
-        run: |
-          ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null || true)
-          if [ -z "$ASSETS" ]; then
-            exit 0
-          fi
-          while IFS= read -r asset; do
-            [ -n "$asset" ] || continue
-            gh release delete-asset "$TAG" "$asset" --yes
-          done <<EOF
-          $ASSETS
-          EOF
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: artifacts/**
-          draft: true
-          generate_release_notes: true

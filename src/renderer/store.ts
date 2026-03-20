@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import type { AppSettings, Channel, EventLog, LiveSession } from '@shared/types';
+import type { AppSettings, Channel, EventLog, LiveSession, UpdaterState } from '@shared/types';
 
 interface AppState {
   channels: Channel[];
   sessions: LiveSession[];
   settings: AppSettings | null;
+  updater: UpdaterState | null;
   logs: EventLog[];
   initialized: boolean;
   pollingRunning: boolean;
@@ -22,6 +23,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   channels: [],
   sessions: [],
   settings: null,
+  updater: null,
   logs: [],
   initialized: false,
   pollingRunning: false,
@@ -43,6 +45,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       channels: snapshot.channels,
       sessions: snapshot.sessions,
       settings: snapshot.settings,
+      updater: snapshot.updater,
       logs: snapshot.logs,
       initialized: true,
       pollingRunning: snapshot.pollingRunning,

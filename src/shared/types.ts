@@ -40,6 +40,17 @@ export interface AppSettings {
   enableLowBandwidthBackgroundLives: boolean;
 }
 
+export type UpdaterStatus = 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'error';
+
+export interface UpdaterState {
+  enabled: boolean;
+  status: UpdaterStatus;
+  currentVersion: string;
+  availableVersion: string | null;
+  downloadPercent: number | null;
+  error: string | null;
+}
+
 export interface ChannelStatus {
   isLive: boolean;
   watchUrl?: string;
@@ -111,6 +122,7 @@ export interface RendererSnapshot {
   channels: Channel[];
   sessions: LiveSession[];
   settings: AppSettings;
+  updater: UpdaterState;
   logs: EventLog[];
   pollingRunning: boolean;
   pollingChannelId: string | null;

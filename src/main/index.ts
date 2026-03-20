@@ -68,6 +68,10 @@ async function bootstrap(): Promise<void> {
   mainWindow = createWindow();
   appContext = new AppContext();
   appContext.registerIpc(mainWindow);
+  appContext.updater.initialize();
+  void appContext.updater.checkForUpdates().catch(() => {
+    // UpdaterService already records and exposes the error state.
+  });
   appContext.polling.start(mainWindow);
 
   mainWindow.on('resize', () => {

@@ -34,6 +34,7 @@ export function App() {
     channels,
     sessions,
     settings,
+    updater,
     pollingRunning,
     pollingChannelId,
     completedPollingChannelIds,
@@ -49,6 +50,8 @@ export function App() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [checkingUpdates, setCheckingUpdates] = useState(false);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
   const [manualRefreshActive, setManualRefreshActive] = useState(false);
   const refreshingRef = useRef(false);
   const liveCanvasRef = useRef<HTMLDivElement | null>(null);
@@ -194,10 +197,63 @@ export function App() {
     await hydrate();
   }
 
+  async function handleCheckForUpdates() {
+    setCheckingUpdates(true);
+    try {
+      await window.lurkBuddy.app.checkForUpdates();
+      await hydrate();
+    } catch {
+      await hydrate();
+    } finally {
+      setCheckingUpdates(false);
+    }
+  }
+
+  async function handleInstallUpdate() {
+    setInstallingUpdate(true);
+    try {
+      await window.lurkBuddy.app.installUpdate();
+    } catch {
+      await hydrate();
+      setInstallingUpdate(false);
+    }
+  }
+
   const showDashboard = panelOnly || !selectedSession;
   const liveRecovering = sessions.some((session) => session.status === 'recovering');
   const showGlobalProgress = refreshing || pollingRunning;
   const showRefreshStatuses = refreshing || pollingRunning;
+  const updateActionBusy =
+    checkingUpdates ||
+    installingUpdate ||
+    updater?.status === 'checking' ||
+    updater?.status === 'downloading';
+
+  function renderUpdateStatus() {
+    if (!updater) {
+      return 'updates: booting';
+    }
+
+    if (!updater.enabled) {
+      return `v${updater.currentVersion} local build`;
+    }
+
+    switch (updater.status) {
+      case 'checking':
+        return `v${updater.currentVersion} checking`;
+      case 'available':
+        return `v${updater.availableVersion ?? updater.currentVersion} queued`;
+      case 'downloading':
+        return `v${updater.availableVersion ?? updater.currentVersion} ${Math.round(updater.downloadPercent ?? 0)}%`;
+      case 'downloaded':
+        return `v${updater.availableVersion ?? updater.currentVersion} ready`;
+      case 'error':
+        return updater.error ? `update error: ${updater.error}` : 'update error';
+      case 'idle':
+      default:
+        return `v${updater.currentVersion} current`;
+    }
+  }
 
   function renderChannelStatus(channelId: string) {
     if (showRefreshStatuses) {
@@ -327,6 +383,31 @@ export function App() {
               <button className="ghost-btn" onClick={() => setPanelOnly(true)}>
                 back_to_panel
               </button>
+            )}
+            {updater && (
+              <div
+                className={`title-bar-update title-bar-update--${updater.status}`}
+                title={updater.error ?? `Current version: ${updater.currentVersion}`}
+              >
+                <span className="title-bar-update-label">{renderUpdateStatus()}</span>
+                {updater.status === 'downloaded' ? (
+                  <button
+                    className="ghost-btn"
+                    disabled={installingUpdate}
+                    onClick={() => void handleInstallUpdate()}
+                  >
+                    {installingUpdate ? 'restarting...' : 'restart_to_update'}
+                  </button>
+                ) : (
+                  <button
+                    className="ghost-btn"
+                    disabled={!updater.enabled || updateActionBusy}
+                    onClick={() => void handleCheckForUpdates()}
+                  >
+                    {updateActionBusy ? 'checking_updates...' : 'check_updates'}
+                  </button>
+                )}
+              </div>
             )}
             {settings && (
               <label className="title-bar-toggle">
