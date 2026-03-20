@@ -33,9 +33,11 @@ describe('preload contract', () => {
     await api.app.updaterState();
     await api.app.checkForUpdates();
     await api.app.installUpdate();
+    await api.app.openLatestRelease();
 
     expect(invoke).toHaveBeenNthCalledWith(1, IPC_CHANNELS.appUpdaterState);
     expect(invoke).toHaveBeenNthCalledWith(2, IPC_CHANNELS.appCheckForUpdates);
     expect(invoke).toHaveBeenNthCalledWith(3, IPC_CHANNELS.appInstallUpdate);
+    expect(invoke).toHaveBeenNthCalledWith(4, IPC_CHANNELS.appOpenLatestRelease);
   });
 });

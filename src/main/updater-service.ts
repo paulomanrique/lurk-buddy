@@ -18,7 +18,10 @@ interface UpdaterServiceOptions {
   autoUpdater?: UpdaterClient;
   isPackaged?: boolean;
   currentVersion?: string;
+  platform?: NodeJS.Platform;
 }
+
+const RELEASE_URL = 'https://github.com/paulomanrique/lurk-buddy/releases/latest';
 
 const DEFAULT_STATE: UpdaterState = {
   enabled: false,
@@ -26,12 +29,16 @@ const DEFAULT_STATE: UpdaterState = {
   currentVersion: app.getVersion(),
   availableVersion: null,
   downloadPercent: null,
-  error: null
+  error: null,
+  manualReason: null,
+  releaseUrl: RELEASE_URL
 };
 
 export class UpdaterService {
   private readonly autoUpdater: UpdaterClient;
   private readonly isPackaged: boolean;
+  private readonly platform: NodeJS.Platform;
+  private readonly autoUpdatesSupported: boolean;
   private state: UpdaterState;
   private readonly listeners = new Set<() => void>();
   private initialized = false;
@@ -42,10 +49,16 @@ export class UpdaterService {
   ) {
     this.autoUpdater = options.autoUpdater ?? autoUpdater;
     this.isPackaged = options.isPackaged ?? app.isPackaged;
+    this.platform = options.platform ?? process.platform;
+    this.autoUpdatesSupported = this.isPackaged && this.platform !== 'darwin';
     this.state = {
       ...DEFAULT_STATE,
-      enabled: this.isPackaged,
-      currentVersion: options.currentVersion ?? DEFAULT_STATE.currentVersion
+      enabled: this.autoUpdatesSupported,
+      currentVersion: options.currentVersion ?? DEFAULT_STATE.currentVersion,
+      manualReason:
+        this.isPackaged && this.platform === 'darwin'
+          ? 'Manual download required on macOS until Apple code signing is available.'
+          : null
     };
   }
 
@@ -61,7 +74,7 @@ export class UpdaterService {
   }
 
   initialize(): void {
-    if (!this.isPackaged || this.initialized) {
+    if (!this.autoUpdatesSupported || this.initialized) {
       return;
     }
 
@@ -132,7 +145,7 @@ export class UpdaterService {
   }
 
   async checkForUpdates(): Promise<void> {
-    if (!this.isPackaged) {
+    if (!this.autoUpdatesSupported) {
       return;
     }
 
@@ -153,7 +166,7 @@ export class UpdaterService {
   }
 
   installUpdate(): void {
-    if (!this.isPackaged || this.state.status !== 'downloaded') {
+    if (!this.autoUpdatesSupported || this.state.status !== 'downloaded') {
       return;
     }
 

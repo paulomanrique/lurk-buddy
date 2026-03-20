@@ -125,7 +125,8 @@ const api: LurkBuddyApi = {
     },
     runNow: () => ipcRenderer.invoke(IPC_CHANNELS.appRunNow),
     checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.appCheckForUpdates),
-    installUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.appInstallUpdate)
+    installUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.appInstallUpdate),
+    openLatestRelease: () => ipcRenderer.invoke(IPC_CHANNELS.appOpenLatestRelease)
   }
 };
 

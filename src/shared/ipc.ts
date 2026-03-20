@@ -46,6 +46,7 @@ export interface LurkBuddyApi {
     runNow: () => Promise<void>;
     checkForUpdates: () => Promise<void>;
     installUpdate: () => Promise<void>;
+    openLatestRelease: () => Promise<void>;
   };
 }
 
@@ -71,5 +72,6 @@ export const IPC_CHANNELS = {
   appStateChanged: 'app:state-changed',
   appRunNow: 'app:run-now',
   appCheckForUpdates: 'app:check-for-updates',
-  appInstallUpdate: 'app:install-update'
+  appInstallUpdate: 'app:install-update',
+  appOpenLatestRelease: 'app:open-latest-release'
 } as const;

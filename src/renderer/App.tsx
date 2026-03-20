@@ -267,6 +267,13 @@ export function App() {
     }
   }
 
+  async function handleOpenLatestRelease() {
+    trackEvent('update_manual_download_requested', {
+      platform: 'manual'
+    });
+    await window.lurkBuddy.app.openLatestRelease();
+  }
+
   const showDashboard = panelOnly || !selectedSession;
   const liveRecovering = sessions.some((session) => session.status === 'recovering');
   const showGlobalProgress = refreshing || pollingRunning;
@@ -291,7 +298,9 @@ export function App() {
     }
 
     if (!updater.enabled) {
-      return `v${updater.currentVersion} local build`;
+      return updater.manualReason
+        ? `v${updater.currentVersion} manual update`
+        : `v${updater.currentVersion} local build`;
     }
 
     switch (updater.status) {
@@ -453,6 +462,10 @@ export function App() {
                     onClick={() => void handleInstallUpdate()}
                   >
                     {installingUpdate ? 'restarting...' : 'restart_to_update'}
+                  </button>
+                ) : !updater.enabled && updater.manualReason ? (
+                  <button className="ghost-btn" onClick={() => void handleOpenLatestRelease()}>
+                    download_latest_release
                   </button>
                 ) : (
                   <button

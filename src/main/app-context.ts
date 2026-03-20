@@ -17,7 +17,7 @@ import { SettingsService } from '../modules/settings/settings-service.js';
 import { StateHub } from './state-hub.js';
 import { UpdaterService } from './updater-service.js';
 
-const { app, dialog, ipcMain } = electron;
+const { app, dialog, ipcMain, shell } = electron;
 const preloadPath = join(__dirname, '../preload/index.js');
 
 function mapChannelCreateError(error: unknown): string {
@@ -189,6 +189,9 @@ export class AppContext {
     });
     ipcMain.handle(IPC_CHANNELS.appInstallUpdate, () => {
       this.updater.installUpdate();
+    });
+    ipcMain.handle(IPC_CHANNELS.appOpenLatestRelease, async () => {
+      await shell.openExternal(this.updater.getState().releaseUrl);
     });
 
     this.stateHub.on(() => {

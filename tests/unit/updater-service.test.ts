@@ -46,7 +46,33 @@ describe('UpdaterService', () => {
       currentVersion: '1.0.0',
       availableVersion: null,
       downloadPercent: null,
-      error: null
+      error: null,
+      manualReason: null,
+      releaseUrl: 'https://github.com/paulomanrique/lurk-buddy/releases/latest'
+    });
+    expect(updater.checkForUpdates).not.toHaveBeenCalled();
+  });
+
+  it('disables auto-updates on macOS packaged builds and exposes manual download state', async () => {
+    const service = new UpdaterService(logs as never, {
+      autoUpdater: updater,
+      isPackaged: true,
+      currentVersion: '1.0.0',
+      platform: 'darwin'
+    });
+
+    service.initialize();
+    await service.checkForUpdates();
+
+    expect(service.getState()).toEqual({
+      enabled: false,
+      status: 'idle',
+      currentVersion: '1.0.0',
+      availableVersion: null,
+      downloadPercent: null,
+      error: null,
+      manualReason: 'Manual download required on macOS until Apple code signing is available.',
+      releaseUrl: 'https://github.com/paulomanrique/lurk-buddy/releases/latest'
     });
     expect(updater.checkForUpdates).not.toHaveBeenCalled();
   });
@@ -55,7 +81,8 @@ describe('UpdaterService', () => {
     const service = new UpdaterService(logs as never, {
       autoUpdater: updater,
       isPackaged: true,
-      currentVersion: '1.0.0'
+      currentVersion: '1.0.0',
+      platform: 'win32'
     });
 
     service.initialize();
@@ -69,7 +96,8 @@ describe('UpdaterService', () => {
       currentVersion: '1.0.0',
       availableVersion: '1.1.0',
       downloadPercent: 0,
-      error: null
+      error: null,
+      manualReason: null
     });
 
     updater.emit('download-progress', { percent: 55.17 });
@@ -96,7 +124,8 @@ describe('UpdaterService', () => {
     const service = new UpdaterService(logs as never, {
       autoUpdater: updater,
       isPackaged: true,
-      currentVersion: '1.0.0'
+      currentVersion: '1.0.0',
+      platform: 'win32'
     });
 
     await expect(service.checkForUpdates()).rejects.toThrow('network down');

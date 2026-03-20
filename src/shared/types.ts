@@ -49,6 +49,8 @@ export interface UpdaterState {
   availableVersion: string | null;
   downloadPercent: number | null;
   error: string | null;
+  manualReason: string | null;
+  releaseUrl: string;
 }
 
 export interface ChannelStatus {

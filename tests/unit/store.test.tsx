@@ -22,7 +22,9 @@ const snapshot = {
     currentVersion: '1.0.0',
     availableVersion: null,
     downloadPercent: null,
-    error: null
+    error: null,
+    manualReason: null,
+    releaseUrl: 'https://github.com/paulomanrique/lurk-buddy/releases/latest'
   },
   logs: [],
   pollingRunning: false,
@@ -61,7 +63,8 @@ const lurkBuddy = {
     onStateChanged: vi.fn(() => vi.fn()),
     runNow: vi.fn(),
     checkForUpdates: vi.fn(),
-    installUpdate: vi.fn()
+    installUpdate: vi.fn(),
+    openLatestRelease: vi.fn()
   }
 };
 
@@ -115,5 +118,21 @@ describe('App shell', () => {
 
     expect(await screen.findByRole('button', { name: 'restart_to_update' })).toBeInTheDocument();
     expect(screen.getByText('v1.1.0 ready')).toBeInTheDocument();
+  });
+
+  it('renders manual download action when auto-updates are disabled', async () => {
+    lurkBuddy.app.snapshot.mockResolvedValueOnce({
+      ...snapshot,
+      updater: {
+        ...snapshot.updater,
+        enabled: false,
+        manualReason: 'Manual download required on macOS until Apple code signing is available.'
+      }
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText('v1.0.0 manual update')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'download_latest_release' })).toBeInTheDocument();
   });
 });
