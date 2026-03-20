@@ -115,6 +115,7 @@ const api: LurkBuddyApi = {
   },
   app: {
     snapshot: () => ipcRenderer.invoke(IPC_CHANNELS.appSnapshot),
+    updaterState: () => ipcRenderer.invoke(IPC_CHANNELS.appUpdaterState),
     onStateChanged: (callback) => {
       const listener = () => callback();
       ipcRenderer.on(IPC_CHANNELS.appStateChanged, listener);
@@ -122,7 +123,9 @@ const api: LurkBuddyApi = {
         ipcRenderer.removeListener(IPC_CHANNELS.appStateChanged, listener);
       };
     },
-    runNow: () => ipcRenderer.invoke(IPC_CHANNELS.appRunNow)
+    runNow: () => ipcRenderer.invoke(IPC_CHANNELS.appRunNow),
+    checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.appCheckForUpdates),
+    installUpdate: () => ipcRenderer.invoke(IPC_CHANNELS.appInstallUpdate)
   }
 };
 

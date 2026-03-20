@@ -1,15 +1,41 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { IPC_CHANNELS } from '../../src/shared/ipc';
 
-describe('focus spoof contract', () => {
-  it('captures the intended values for hidden/visibility/focus', () => {
-    const descriptor = {
-      hidden: false,
-      visibilityState: 'visible',
-      hasFocus: true
-    };
+const invoke = vi.fn();
+const on = vi.fn();
+const removeListener = vi.fn();
+const exposeInMainWorld = vi.fn();
 
-    expect(descriptor.hidden).toBe(false);
-    expect(descriptor.visibilityState).toBe('visible');
-    expect(descriptor.hasFocus).toBe(true);
+vi.mock('electron', () => ({
+  contextBridge: {
+    exposeInMainWorld
+  },
+  ipcRenderer: {
+    invoke,
+    on,
+    removeListener
+  }
+}));
+
+describe('preload contract', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    invoke.mockReset();
+    on.mockReset();
+    removeListener.mockReset();
+    exposeInMainWorld.mockReset();
+  });
+
+  it('exposes updater methods over IPC', async () => {
+    await import('../../src/preload/index');
+
+    const [, api] = exposeInMainWorld.mock.calls[0];
+    await api.app.updaterState();
+    await api.app.checkForUpdates();
+    await api.app.installUpdate();
+
+    expect(invoke).toHaveBeenNthCalledWith(1, IPC_CHANNELS.appUpdaterState);
+    expect(invoke).toHaveBeenNthCalledWith(2, IPC_CHANNELS.appCheckForUpdates);
+    expect(invoke).toHaveBeenNthCalledWith(3, IPC_CHANNELS.appInstallUpdate);
   });
 });

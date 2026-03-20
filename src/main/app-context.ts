@@ -15,6 +15,7 @@ import { PollRunRepository } from '../modules/polling/poll-run-repository.js';
 import { PollingService } from '../modules/polling/polling-service.js';
 import { SettingsService } from '../modules/settings/settings-service.js';
 import { StateHub } from './state-hub.js';
+import { UpdaterService } from './updater-service.js';
 
 const { app, dialog, ipcMain } = electron;
 const preloadPath = join(__dirname, '../preload/index.js');
@@ -46,6 +47,7 @@ export class AppContext {
   readonly sessions: LiveSessionService;
   readonly pollRuns: PollRunRepository;
   readonly polling: PollingService;
+  readonly updater: UpdaterService;
   readonly stateHub: StateHub;
 
   constructor() {
@@ -58,6 +60,7 @@ export class AppContext {
     this.sessions = new LiveSessionService(this.sessionsRepository, this.logs, preloadPath, this.settings);
     this.pollRuns = new PollRunRepository(this.db);
     this.stateHub = new StateHub();
+    this.updater = new UpdaterService(this.logs);
     this.polling = new PollingService(
       this.channels,
       this.channelService,
@@ -68,6 +71,7 @@ export class AppContext {
     );
     this.sessions.bindStateChange(() => this.stateHub.emit());
     this.polling.bindStateChange(() => this.stateHub.emit());
+    this.updater.onStateChange(() => this.stateHub.emit());
   }
 
   registerIpc(mainWindow: BrowserWindow): void {
@@ -169,14 +173,22 @@ export class AppContext {
       channels: this.channels.list(),
       sessions: this.sessions.activeList(),
       settings: this.settings.get(),
+      updater: this.updater.getState(),
       logs: this.logs.list(),
       pollingRunning: this.polling.isRunning(),
       pollingChannelId: this.polling.currentChannelId(),
       completedPollingChannelIds: this.polling.completedChannelIds()
     }));
+    ipcMain.handle(IPC_CHANNELS.appUpdaterState, () => this.updater.getState());
 
     ipcMain.handle(IPC_CHANNELS.appRunNow, async () => {
       await this.polling.runNow();
+    });
+    ipcMain.handle(IPC_CHANNELS.appCheckForUpdates, async () => {
+      await this.updater.checkForUpdates();
+    });
+    ipcMain.handle(IPC_CHANNELS.appInstallUpdate, () => {
+      this.updater.installUpdate();
     });
 
     this.stateHub.on(() => {

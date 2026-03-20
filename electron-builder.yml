@@ -19,6 +19,12 @@ extraResources:
 
 asar: true
 
+publish:
+  provider: github
+  owner: paulomanrique
+  repo: lurk-buddy
+  releaseType: draft
+
 mac:
   icon: build/icon.icns
   category: public.app-category.utilities
