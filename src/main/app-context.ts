@@ -3,7 +3,7 @@ import * as electron from 'electron';
 import type { BrowserWindow } from 'electron';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createDatabase } from '../db/database.js';
+import { createDatabase, resolveDatabasePath } from '../db/database.js';
 import { IPC_CHANNELS } from '../shared/ipc.js';
 import { channelTransferListSchema, settingsPatchSchema } from '../shared/schemas.js';
 import { ChannelRepository } from '../modules/channels/channel-repository.js';
@@ -18,6 +18,23 @@ import { StateHub } from './state-hub.js';
 
 const { app, dialog, ipcMain } = electron;
 const preloadPath = join(__dirname, '../preload/index.js');
+
+function mapChannelCreateError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('already being tracked')) {
+    return 'This channel is already being tracked.';
+  }
+  if (normalized.includes('readonly')) {
+    return 'The local database is read-only. Check folder permissions or move the app out of a protected location.';
+  }
+  if (normalized.includes('locked') || normalized.includes('busy')) {
+    return 'The local database is locked by another process. Close other Lurk Buddy instances and try again.';
+  }
+
+  return 'Failed to save this channel locally.';
+}
 
 export class AppContext {
   readonly db: Database.Database;
@@ -61,11 +78,13 @@ export class AppContext {
         this.stateHub.emit();
         return result;
       } catch (error) {
+        const dbPath = resolveDatabasePath();
         this.logs.write('error', 'channels', 'Failed to create channel', {
           input,
+          dbPath,
           error: error instanceof Error ? error.message : String(error)
         });
-        throw error;
+        throw new Error(mapChannelCreateError(error));
       }
     });
     ipcMain.handle(IPC_CHANNELS.channelsUpdate, (_event, id, patch) => {

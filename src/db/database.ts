@@ -7,12 +7,16 @@ import { DEFAULT_SETTINGS } from '../shared/constants.js';
 
 const { app } = electron;
 
-export function createDatabase(): Database.Database {
+export function resolveDatabasePath(): string {
   const userDataPath = app.getPath('userData');
   if (!existsSync(userDataPath)) {
     mkdirSync(userDataPath, { recursive: true });
   }
-  const dbPath = join(userDataPath, 'lurk-buddy.db');
+  return join(userDataPath, 'lurk-buddy.db');
+}
+
+export function createDatabase(): Database.Database {
+  const dbPath = resolveDatabasePath();
   const db = new Database(dbPath);
   db.pragma('journal_mode = WAL');
 

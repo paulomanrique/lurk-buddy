@@ -52,9 +52,8 @@ export class ChannelRepository {
     this.db
       .prepare(
         `INSERT INTO channels (
-          id, platform, channel_key, display_name, url, enabled,
-          poll_interval_minutes, priority, created_at, updated_at, last_poll_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          id, platform, channel_key, display_name, url, enabled, created_at, updated_at, last_poll_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         channel.id,
@@ -63,8 +62,6 @@ export class ChannelRepository {
         channel.displayName,
         channel.url,
         channel.enabled ? 1 : 0,
-        5,
-        100,
         channel.createdAt,
         channel.updatedAt,
         channel.lastPollAt
