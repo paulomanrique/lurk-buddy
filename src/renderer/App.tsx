@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import type { AppSettings, Channel } from '@shared/types';
 import { APP_NAME, POLL_TICK_MS } from '@shared/constants';
+import { trackEvent, trackScreenView } from './analytics';
 import { EmptyState, PlatformBadge } from './components';
 import { useAppStore } from './store';
 import logoCircleUrl from './assets/logo-circle.svg';
@@ -102,33 +103,51 @@ export function App() {
         value: form.value,
         displayName: form.displayName || undefined
       });
+      trackEvent('channel_created');
       setForm(initialForm);
       await hydrate();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to add channel.';
+      trackEvent('channel_create_failed');
       setCreateError(message);
     }
   }
 
   async function handleToggle(channel: Channel) {
     await window.lurkBuddy.channels.toggle(channel.id, !channel.enabled);
+    trackEvent('channel_toggled', {
+      platform: channel.platform,
+      enabled: !channel.enabled
+    });
     await hydrate();
   }
 
   async function handleDelete(channelId: string) {
+    const channel = channels.find((entry) => entry.id === channelId);
     await window.lurkBuddy.channels.delete(channelId);
+    trackEvent('channel_deleted', {
+      platform: channel?.platform
+    });
     await hydrate();
   }
 
   async function handleSettingsChange(patch: Partial<AppSettings>) {
     await window.lurkBuddy.settings.update(patch);
+    trackEvent('settings_updated', {
+      low_bandwidth_background_lives: patch.enableLowBandwidthBackgroundLives
+    });
     await hydrate();
   }
 
   async function handleTestChannel(id: string) {
     setTestingId(id);
     try {
+      const channel = channels.find((entry) => entry.id === id);
       const result = await window.lurkBuddy.channels.test(id);
+      trackEvent('channel_tested', {
+        platform: channel?.platform,
+        is_live: result.status.isLive
+      });
       window.alert(`Status: ${result.status.isLive ? 'LIVE' : 'OFFLINE'}\nURL: ${result.normalizedUrl}`);
     } finally {
       setTestingId(null);
@@ -136,15 +155,23 @@ export function App() {
   }
 
   async function handleCloseSession(sessionId: string) {
+    const session = sessions.find((entry) => entry.id === sessionId);
     await window.lurkBuddy.lives.close(sessionId);
+    trackEvent('live_session_closed', {
+      platform: session?.platform
+    });
     if (selectedSessionId === sessionId) setPanelOnly(true);
     await hydrate();
   }
 
   async function handleSelectSession(sessionId: string) {
+    const session = sessions.find((entry) => entry.id === sessionId);
     setPanelOnly(false);
     setSelectedSessionId(sessionId);
     await window.lurkBuddy.lives.activate(sessionId);
+    trackEvent('live_session_selected', {
+      platform: session?.platform
+    });
   }
 
   async function handleRefresh() {
@@ -156,6 +183,10 @@ export function App() {
     setManualRefreshActive(true);
     setRefreshing(true);
     try {
+      trackEvent('manual_refresh_requested', {
+        active_sessions: sessions.length,
+        tracked_channels: channels.length
+      });
       await window.lurkBuddy.app.runNow();
       resetPollCountdown();
       await hydrate();
@@ -176,6 +207,9 @@ export function App() {
     if (!result.path) {
       return;
     }
+    trackEvent('channels_exported', {
+      count: result.count
+    });
     window.alert(`Exported ${result.count} channel${result.count === 1 ? '' : 's'} to:\n${result.path}`);
   }
 
@@ -184,6 +218,11 @@ export function App() {
     if (!result.path) {
       return;
     }
+    trackEvent('channels_imported', {
+      total: result.total,
+      imported: result.imported,
+      skipped: result.skipped
+    });
     await hydrate();
     window.alert(
       `Imported ${result.imported} of ${result.total} channel${result.total === 1 ? '' : 's'}.\n` +
@@ -193,13 +232,19 @@ export function App() {
   }
 
   async function handleToggleMute(sessionId: string, muted: boolean) {
+    const session = sessions.find((entry) => entry.id === sessionId);
     await window.lurkBuddy.lives.setMuted(sessionId, !muted);
+    trackEvent('live_session_mute_toggled', {
+      platform: session?.platform,
+      muted: !muted
+    });
     await hydrate();
   }
 
   async function handleCheckForUpdates() {
     setCheckingUpdates(true);
     try {
+      trackEvent('update_check_requested');
       await window.lurkBuddy.app.checkForUpdates();
       await hydrate();
     } catch {
@@ -212,6 +257,9 @@ export function App() {
   async function handleInstallUpdate() {
     setInstallingUpdate(true);
     try {
+      trackEvent('update_install_requested', {
+        version: updater?.availableVersion
+      });
       await window.lurkBuddy.app.installUpdate();
     } catch {
       await hydrate();
@@ -228,6 +276,14 @@ export function App() {
     installingUpdate ||
     updater?.status === 'checking' ||
     updater?.status === 'downloading';
+
+  useEffect(() => {
+    trackScreenView(showDashboard ? 'dashboard' : 'live_session', {
+      active_sessions: sessions.length,
+      tracked_channels: channels.length,
+      platform: selectedSession?.platform
+    });
+  }, [channels.length, selectedSession?.platform, sessions.length, showDashboard]);
 
   function renderUpdateStatus() {
     if (!updater) {
