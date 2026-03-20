@@ -462,6 +462,17 @@ input[type='checkbox'] { accent-color: var(--brand); }
   align-items: end;
 }
 
+.form-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 98, 104, 0.42);
+  border-radius: 8px;
+  background: rgba(255, 98, 104, 0.08);
+  color: var(--brand);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
 .form-field {
   display: flex;
   flex-direction: column;

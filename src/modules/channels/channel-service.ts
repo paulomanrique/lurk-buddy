@@ -33,6 +33,10 @@ export class ChannelService {
 
   create(input: CreateChannelInput): Channel {
     const { parsed, platform, normalized } = this.normalizeCreateInput(input);
+    const existing = this.repository.getByPlatformAndChannelKey(platform, normalized.channelKey);
+    if (existing) {
+      throw new Error('This channel is already being tracked.');
+    }
     const channel: Channel = {
       id: makeId(),
       platform,

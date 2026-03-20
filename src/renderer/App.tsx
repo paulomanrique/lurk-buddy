@@ -46,6 +46,7 @@ export function App() {
   } =
     useAppStore();
   const [form, setForm] = useState(initialForm);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [manualRefreshActive, setManualRefreshActive] = useState(false);
@@ -92,12 +93,18 @@ export function App() {
 
   async function handleCreateChannel(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await window.lurkBuddy.channels.create({
-      value: form.value,
-      displayName: form.displayName || undefined,
-    });
-    setForm(initialForm);
-    await hydrate();
+    setCreateError(null);
+    try {
+      await window.lurkBuddy.channels.create({
+        value: form.value,
+        displayName: form.displayName || undefined
+      });
+      setForm(initialForm);
+      await hydrate();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to add channel.';
+      setCreateError(message);
+    }
   }
 
   async function handleToggle(channel: Channel) {
@@ -389,7 +396,10 @@ export function App() {
                         className="field-input"
                         placeholder="https://twitch.tv/..."
                         value={form.value}
-                        onChange={(e) => setForm((f) => ({ ...f, value: e.target.value }))}
+                        onChange={(e) => {
+                          setCreateError(null);
+                          setForm((f) => ({ ...f, value: e.target.value }));
+                        }}
                       />
                     </div>
                   </div>
@@ -399,13 +409,17 @@ export function App() {
                       className="field-input"
                       placeholder="optional"
                       value={form.displayName}
-                      onChange={(e) => setForm((f) => ({ ...f, displayName: e.target.value }))}
+                      onChange={(e) => {
+                        setCreateError(null);
+                        setForm((f) => ({ ...f, displayName: e.target.value }));
+                      }}
                     />
                   </div>
                   <button className="primary-btn" type="submit" style={{ alignSelf: 'flex-end' }}>
                     + add
                   </button>
                 </form>
+                {createError && <div className="form-error">{createError}</div>}
               </div>
             </div>
 

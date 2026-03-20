@@ -56,9 +56,17 @@ export class AppContext {
   registerIpc(mainWindow: BrowserWindow): void {
     ipcMain.handle(IPC_CHANNELS.channelsList, () => this.channels.list());
     ipcMain.handle(IPC_CHANNELS.channelsCreate, (_event, input) => {
-      const result = this.channelService.create(input);
-      this.stateHub.emit();
-      return result;
+      try {
+        const result = this.channelService.create(input);
+        this.stateHub.emit();
+        return result;
+      } catch (error) {
+        this.logs.write('error', 'channels', 'Failed to create channel', {
+          input,
+          error: error instanceof Error ? error.message : String(error)
+        });
+        throw error;
+      }
     });
     ipcMain.handle(IPC_CHANNELS.channelsUpdate, (_event, id, patch) => {
       const result = this.channelService.update(id, patch);
