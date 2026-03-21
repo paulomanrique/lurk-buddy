@@ -88,9 +88,3 @@
 - Before finishing a task, ensure:
   - `git status --short` is clean
   - local branch is pushed to `origin`
-
-## Known Open Items
-
-- Harden live detection for YouTube and Kick.
-- Improve platform-specific end-of-live detection.
-- Add broader integration/E2E coverage for native live view behavior.
