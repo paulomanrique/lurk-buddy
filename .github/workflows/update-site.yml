@@ -1,0 +1,69 @@
+name: Update site download links
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  update-site:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Update download links in site/index.html
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          python3 - <<'EOF'
+          import re, os
+
+          tag     = os.environ["TAG"]                         # e.g. "v0.0.6"
+          version = tag.lstrip("v")                           # e.g. "0.0.6"
+          base    = f"https://github.com/paulomanrique/lurk-buddy/releases/download/{tag}"
+
+          urls = {
+            "dl-mac-arm64":   f"{base}/Lurk-Buddy-{version}-arm64.dmg",
+            "dl-mac-x64":     f"{base}/Lurk-Buddy-{version}-x64.dmg",
+            "dl-win-x64":     f"{base}/Lurk-Buddy-{version}-x64.exe",
+            "dl-win-arm64":   f"{base}/Lurk-Buddy-{version}-arm64.exe",
+            "dl-linux-x64":   f"{base}/Lurk-Buddy-{version}-x86_64.AppImage",
+            "dl-linux-arm64": f"{base}/Lurk-Buddy-{version}-arm64.AppImage",
+          }
+
+          path = "site/index.html"
+          html = open(path).read()
+
+          # Replace each href by id
+          for id_, url in urls.items():
+            html = re.sub(
+              rf'(<a\s+id="{id_}"\s+href=")[^"]*(")',
+              rf'\g<1>{url}\g<2>',
+              html
+            )
+
+          # Update version badge in each download card subtitle (.dmg · vX.X.X)
+          html = re.sub(
+            r'(\.(dmg|exe|AppImage) · )v[\d.]+',
+            rf'\g<1>{tag}',
+            html
+          )
+
+          open(path, "w").write(html)
+          print(f"Updated site/index.html to {tag}")
+          EOF
+
+      - name: Commit and push
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add site/index.html
+          git diff --cached --quiet && echo "No changes" && exit 0
+          git commit -m "chore: update site download links to ${{ github.event.release.tag_name }}"
+          git push

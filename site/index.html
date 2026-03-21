@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lurk Buddy — Never miss a live. Never lift a finger.</title>
+  <meta name="description" content="Lurk Buddy automatically monitors your favorite streamers across Twitch, YouTube, and Kick — and opens their streams the moment they go live." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: { extend: {
+        colors: { brand:'#FF6268','brand-hover':'#E5575D',bg:'#0D1623',surface:'#111827','text-primary':'#F7EFEF','text-muted':'#6B7280' },
+        fontFamily: { display:['Space Grotesk','sans-serif'], body:['Inter','sans-serif'], mono:['JetBrains Mono','monospace'] }
+      }}
+    };
+  </script>
+  <style>
+    *{box-sizing:border-box}
+    body{background:#0D1623;color:#F7EFEF;font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased}
+    ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#0D1623}::-webkit-scrollbar-thumb{background:rgba(255,98,104,0.3);border-radius:3px}
+    .hero-bg{background:radial-gradient(ellipse 80% 60% at 50% -10%,rgba(255,98,104,0.12) 0%,transparent 70%),radial-gradient(ellipse 40% 40% at 80% 50%,rgba(255,98,104,0.05) 0%,transparent 60%),#0D1623}
+    .grid-texture{background-image:linear-gradient(rgba(255,98,104,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,98,104,0.03) 1px,transparent 1px);background-size:40px 40px}
+    .gradient-text{background:linear-gradient(135deg,#FF6268 0%,#FF9A9E 60%,#FFB8BA 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .btn-primary{display:inline-flex;align-items:center;gap:6px;background:#FF6268;color:#000;font-family:'JetBrains Mono',monospace;font-weight:600;font-size:14px;padding:10px 20px;border-radius:8px;border:none;cursor:pointer;transition:all .15s ease;text-decoration:none;letter-spacing:.02em}
+    .btn-primary:hover{background:#E5575D;transform:translateY(-1px);box-shadow:0 4px 20px rgba(255,98,104,0.35)}
+    .btn-primary:active{background:#CC4D53;transform:translateY(0)}
+    .btn-secondary{display:inline-flex;align-items:center;gap:6px;background:transparent;color:#F7EFEF;font-family:'JetBrains Mono',monospace;font-size:13px;padding:10px 20px;border-radius:8px;border:1px solid rgba(255,98,104,0.3);cursor:pointer;transition:all .15s ease;text-decoration:none}
+    .btn-secondary:hover{border-color:rgba(255,98,104,0.6);background:rgba(255,98,104,0.06)}
+    .feature-card{background:#111827;border:1px solid rgba(255,98,104,0.15);border-radius:12px;padding:24px;transition:all .2s ease;position:relative;overflow:hidden}
+    .feature-card::before{content:'';position:absolute;inset:0;border-radius:12px;background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(255,98,104,0.06) 0%,transparent 60%);opacity:0;transition:opacity .3s ease}
+    .feature-card:hover{border-color:rgba(255,98,104,0.4);box-shadow:0 0 24px rgba(255,98,104,0.08);transform:translateY(-2px)}
+    .feature-card:hover::before{opacity:1}
+    .step-line{flex:1;height:1px;background:linear-gradient(90deg,rgba(255,98,104,0.4),rgba(255,98,104,0.1))}
+    .nav-blur{backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:rgba(13,22,35,0.85);border-bottom:1px solid rgba(255,98,104,0.1)}
+    .platform-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,98,104,0.08);border:1px solid rgba(255,98,104,0.18);border-radius:6px;padding:4px 10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#F7EFEF;letter-spacing:.05em}
+    .download-card{background:#111827;border:1px solid rgba(255,98,104,0.15);border-radius:16px;padding:32px 24px;text-align:center;transition:all .2s ease}
+    .download-card:hover{border-color:rgba(255,98,104,0.4);box-shadow:0 0 32px rgba(255,98,104,0.1);transform:translateY(-3px)}
+    .section-label{font-family:'JetBrains Mono',monospace;font-size:11px;color:#FF6268;letter-spacing:.12em;text-transform:uppercase}
+    .live-dot{display:inline-block;width:7px;height:7px;background:#FF6268;border-radius:50%;animation:liveDot 1.5s ease-in-out infinite}
+    @keyframes liveDot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)}}
+    .animate-on-scroll{opacity:0;transform:translateY(24px);transition:opacity .6s ease,transform .6s ease}
+    .animate-on-scroll.visible{opacity:1;transform:translateY(0)}
+    .step-num{width:36px;height:36px;border-radius:50%;background:rgba(255,98,104,0.12);border:1px solid rgba(255,98,104,0.3);display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:#FF6268;flex-shrink:0}
+    .noise-overlay{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.025;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")}
+
+    /* Language dropdown */
+    .lang-dropdown{position:relative}
+    .lang-btn{display:flex;align-items:center;gap:5px;background:rgba(255,98,104,0.08);border:1px solid rgba(255,98,104,0.2);border-radius:6px;padding:5px 10px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#F7EFEF;cursor:pointer;transition:all .15s ease;white-space:nowrap}
+    .lang-btn:hover{border-color:rgba(255,98,104,0.5);background:rgba(255,98,104,0.12)}
+    .lang-menu{display:none;position:absolute;top:calc(100% + 8px);right:0;background:#111827;border:1px solid rgba(255,98,104,0.2);border-radius:10px;padding:6px;min-width:160px;box-shadow:0 8px 32px rgba(0,0,0,0.5);z-index:100;max-height:360px;overflow-y:auto}
+    .lang-menu.open{display:block}
+    .lang-option{display:block;width:100%;text-align:left;padding:7px 12px;font-family:'JetBrains Mono',monospace;font-size:12px;color:#6B7280;background:transparent;border:none;border-radius:6px;cursor:pointer;transition:all .1s ease;white-space:nowrap}
+    .lang-option:hover{background:rgba(255,98,104,0.08);color:#F7EFEF}
+    .lang-option.active{color:#FF6268}
+
+    /* RTL adjustments */
+    [dir="rtl"] .step-line{background:linear-gradient(270deg,rgba(255,98,104,0.4),rgba(255,98,104,0.1))}
+    [dir="rtl"] .lang-menu{right:auto;left:0}
+  </style>
+</head>
+<body class="overflow-x-hidden">
+  <div class="noise-overlay"></div>
+
+  <!-- NAVBAR -->
+  <nav class="nav-blur fixed top-0 left-0 right-0 z-50">
+    <div class="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+      <a href="#" class="flex items-center gap-2.5 no-underline flex-shrink-0">
+        <svg width="32" height="32" viewBox="0 0 512 512" fill="none"><rect width="512" height="512" rx="256" fill="#FF6268"/><path d="M154 146C216 126 308 129 360 170C384 188 398 214 402 252C406 294 398 333 371 364C333 407 260 419 195 404C167 398 150 390 132 372C110 351 101 323 98 286C95 242 104 205 123 180C131 168 141 155 154 146Z" fill="#000"/><path d="M168 184C214 171 286 172 328 195C349 207 359 229 361 257C363 290 354 315 334 331C301 357 232 362 184 347C159 339 149 326 145 301C141 279 142 235 149 216C153 204 158 193 168 184Z" fill="#FF6268"/><rect x="175" y="181" width="168" height="150" rx="34" fill="#000"/><path d="M246 220L297 256L246 292V220Z" fill="#FF6268"/></svg>
+        <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;color:#F7EFEF;">Lurk Buddy</span>
+      </a>
+      <div class="hidden md:flex items-center gap-8">
+        <a href="#features" data-i18n="nav_features" class="text-text-muted hover:text-text-primary transition-colors" style="font-family:'JetBrains Mono',monospace;font-size:13px;">features</a>
+        <a href="#how-it-works" data-i18n="nav_how" class="text-text-muted hover:text-text-primary transition-colors" style="font-family:'JetBrains Mono',monospace;font-size:13px;">how_it_works</a>
+        <a href="#download" data-i18n="nav_download" class="text-text-muted hover:text-text-primary transition-colors" style="font-family:'JetBrains Mono',monospace;font-size:13px;">download</a>
+      </div>
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <!-- Language dropdown -->
+        <div class="lang-dropdown">
+          <button class="lang-btn" id="lang-btn" onclick="toggleLangMenu()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span id="lang-current">EN</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+          <div class="lang-menu" id="lang-menu">
+            <button class="lang-option" data-lang="en">English</button>
+            <button class="lang-option" data-lang="pt">Português</button>
+            <button class="lang-option" data-lang="es">Español</button>
+            <button class="lang-option" data-lang="de">Deutsch</button>
+            <button class="lang-option" data-lang="fr">Français</button>
+            <button class="lang-option" data-lang="nl">Nederlands</button>
+            <button class="lang-option" data-lang="ru">Русский</button>
+            <button class="lang-option" data-lang="sr">Srpski</button>
+            <button class="lang-option" data-lang="ar">العربية</button>
+            <button class="lang-option" data-lang="zh">中文</button>
+            <button class="lang-option" data-lang="ja">日本語</button>
+            <button class="lang-option" data-lang="ko">한국어</button>
+          </div>
+        </div>
+        <a href="#download" data-i18n="nav_cta" class="btn-primary">[download]</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero-bg grid-texture relative pt-32 pb-20 md:pt-40 md:pb-24">
+    <div class="max-w-6xl mx-auto px-6 relative z-10">
+      <div class="flex justify-center mb-8">
+        <div class="platform-badge">
+          <span class="live-dot"></span>
+          <span data-i18n="hero_badge">v0.0.6 · open source · free forever</span>
+        </div>
+      </div>
+      <div class="text-center mb-6">
+        <h1 style="font-family:'Space Grotesk',sans-serif;font-weight:700;line-height:1.05;">
+          <span data-i18n="hero_tagline" class="gradient-text block" style="font-size:clamp(48px,8vw,96px);">Never miss a live.</span>
+          <span data-i18n="hero_subtitle" style="font-size:clamp(36px,6vw,72px);color:#F7EFEF;opacity:.55;">Never lift a finger.</span>
+        </h1>
+      </div>
+      <p data-i18n-html="hero_desc" class="text-center text-text-muted max-w-2xl mx-auto mb-10" style="font-size:17px;line-height:1.7;">
+        Lurk Buddy automatically monitors your favorite streamers across <span style="color:#9146FF;font-weight:600;">Twitch</span>, <span style="color:#FF0000;font-weight:600;">YouTube</span>, and <span style="color:#53FC18;font-weight:600;">Kick</span> — and opens their streams the moment they go live. No babysitting. No missed drops.
+      </p>
+      <div class="flex flex-wrap items-center justify-center gap-4 mb-16">
+        <a href="#download" class="btn-primary" style="font-size:15px;padding:12px 28px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span data-i18n="hero_cta_dl">[download]</span>
+        </a>
+        <a href="https://github.com/paulomanrique/lurk-buddy" target="_blank" class="btn-secondary" style="font-size:13px;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+          <span data-i18n="hero_cta_gh">view on github</span>
+        </a>
+      </div>
+      <div class="max-w-5xl mx-auto" style="border-radius:12px;overflow:hidden;box-shadow:0 0 80px rgba(255,98,104,0.12),0 0 160px rgba(255,98,104,0.06),0 8px 32px rgba(0,0,0,0.6);">
+        <img src="./screenshot.jpg" alt="Lurk Buddy dashboard" style="width:100%;display:block;" />
+      </div>
+    </div>
+    <div style="position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(transparent,#0D1623);pointer-events:none;"></div>
+  </section>
+
+  <!-- FEATURES -->
+  <section id="features" class="py-24">
+    <div class="max-w-6xl mx-auto px-6">
+      <div class="text-center mb-16 animate-on-scroll">
+        <div class="section-label mb-3">FEATURE_REGISTRY</div>
+        <h2 data-i18n="feat_heading" style="font-family:'Space Grotesk',sans-serif;font-size:clamp(28px,4vw,42px);font-weight:700;color:#F7EFEF;">Everything you need to lurk smart.</h2>
+        <p data-i18n="feat_subtitle" class="text-text-muted mt-3 max-w-xl mx-auto" style="font-size:16px;line-height:1.7;">Built for streamers, fans, and drop hunters. Zero configuration, maximum automation.</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div class="feature-card animate-on-scroll" style="animation-delay:.05s;">
+          <div class="flex items-start gap-3 mb-3">
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,98,104,0.12);border:1px solid rgba(255,98,104,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6268" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <div><div class="section-label" style="font-size:10px;margin-bottom:4px;">AUTO_OPEN</div><h3 data-i18n="feat1_title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;color:#F7EFEF;">Opens streams instantly</h3></div>
+          </div>
+          <p data-i18n="feat1_desc" style="color:#6B7280;font-size:14px;line-height:1.65;">Opens tabs automatically the moment a channel goes live. No manual checking, no missed streams.</p>
+        </div>
+        <div class="feature-card animate-on-scroll" style="animation-delay:.1s;">
+          <div class="flex items-start gap-3 mb-3">
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,98,104,0.12);border:1px solid rgba(255,98,104,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6268" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </div>
+            <div><div class="section-label" style="font-size:10px;margin-bottom:4px;">FOCUS_SPOOF</div><h3 data-i18n="feat2_title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;color:#F7EFEF;">Invisible to platforms</h3></div>
+          </div>
+          <p data-i18n="feat2_desc" style="color:#6B7280;font-size:14px;line-height:1.65;">Keeps streams active even when minimized. Platforms always think you're actively watching.</p>
+        </div>
+        <div class="feature-card animate-on-scroll" style="animation-delay:.15s;">
+          <div class="flex items-start gap-3 mb-3">
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,98,104,0.12);border:1px solid rgba(255,98,104,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6268" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+            </div>
+            <div><div class="section-label" style="font-size:10px;margin-bottom:4px;">SMART_MUTE</div><h3 data-i18n="feat3_title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;color:#F7EFEF;">Silent but counted</h3></div>
+          </div>
+          <p data-i18n="feat3_desc" style="color:#6B7280;font-size:14px;line-height:1.65;">Muted by default, but audio is logically enabled. Drops and watch-time always register correctly.</p>
+        </div>
+        <div class="feature-card animate-on-scroll" style="animation-delay:.2s;">
+          <div class="flex items-start gap-3 mb-3">
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,98,104,0.12);border:1px solid rgba(255,98,104,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6268" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div><div class="section-label" style="font-size:10px;margin-bottom:4px;">MULTI_PLATFORM</div><h3 data-i18n="feat4_title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;color:#F7EFEF;">One app, all platforms</h3></div>
+          </div>
+          <p data-i18n="feat4_desc" style="color:#6B7280;font-size:14px;line-height:1.65;">Track channels on Twitch, YouTube, and Kick from a single unified interface. No switching required.</p>
+        </div>
+        <div class="feature-card animate-on-scroll" style="animation-delay:.25s;">
+          <div class="flex items-start gap-3 mb-3">
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,98,104,0.12);border:1px solid rgba(255,98,104,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6268" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div><div class="section-label" style="font-size:10px;margin-bottom:4px;">AUTO_CLOSE</div><h3 data-i18n="feat5_title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;color:#F7EFEF;">Graceful cleanup</h3></div>
+          </div>
+          <p data-i18n="feat5_desc" style="color:#6B7280;font-size:14px;line-height:1.65;">Closes tabs when streams end, with a configurable grace period (default 90s) to handle brief disconnects.</p>
+        </div>
+        <div class="feature-card animate-on-scroll" style="animation-delay:.3s;">
+          <div class="flex items-start gap-3 mb-3">
+            <div style="width:36px;height:36px;border-radius:8px;background:rgba(255,98,104,0.12);border:1px solid rgba(255,98,104,0.25);display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FF6268" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            </div>
+            <div><div class="section-label" style="font-size:10px;margin-bottom:4px;">BANDWIDTH_SAVE</div><h3 data-i18n="feat6_title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:17px;color:#F7EFEF;">Low resource mode</h3></div>
+          </div>
+          <p data-i18n="feat6_desc" style="color:#6B7280;font-size:14px;line-height:1.65;">Low-bandwidth mode keeps resource usage minimal while maintaining reliable stream detection and tracking.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how-it-works" class="py-24" style="background:linear-gradient(180deg,#0D1623 0%,#0a1120 50%,#0D1623 100%);">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="text-center mb-16 animate-on-scroll">
+        <div class="section-label mb-3">QUEUE_CONTROL.HOW_IT_WORKS</div>
+        <h2 data-i18n="hiw_heading" style="font-family:'Space Grotesk',sans-serif;font-size:clamp(28px,4vw,42px);font-weight:700;color:#F7EFEF;">Set it and forget it.</h2>
+        <p data-i18n="hiw_subtitle" class="text-text-muted mt-3" style="font-size:16px;">Three steps and you're done. Forever.</p>
+      </div>
+      <div class="flex flex-col md:flex-row items-start gap-0 md:gap-4 animate-on-scroll">
+        <div class="flex flex-col items-center text-center flex-1 pb-8 md:pb-0">
+          <div class="step-num mb-5">01</div>
+          <div style="background:#111827;border:1px solid rgba(255,98,104,0.2);border-radius:10px;padding:20px;width:100%;margin-bottom:16px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#FF6268;margin-bottom:8px;">CHANNEL_REGISTRY.ADD</div>
+            <div style="background:#0D1623;border:1px solid rgba(255,98,104,0.15);border-radius:6px;padding:10px 14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:rgba(247,239,239,0.4);text-align:left;">$ https://twitch.tv/...</div>
+          </div>
+          <h3 data-i18n="step1_title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;color:#F7EFEF;margin-bottom:8px;">Add your channels</h3>
+          <p data-i18n="step1_desc" style="color:#6B7280;font-size:14px;line-height:1.6;max-width:200px;">Paste any Twitch, YouTube, or Kick URL or handle.</p>
+          <div class="md:hidden" style="width:1px;height:32px;background:linear-gradient(180deg,rgba(255,98,104,0.4),rgba(255,98,104,0.1));margin-top:16px;"></div>
+        </div>
+        <div class="hidden md:flex items-center" style="padding-top:18px;flex:0 0 60px;"><div class="step-line"></div></div>
+        <div class="flex flex-col items-center text-center flex-1 pb-8 md:pb-0">
+          <div class="step-num mb-5">02</div>
+          <div style="background:#111827;border:1px solid rgba(255,98,104,0.2);border-radius:10px;padding:20px;width:100%;margin-bottom:16px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#FF6268;margin-bottom:8px;">POLL_SCHEDULER.STATUS</div>
+            <div style="display:flex;flex-direction:column;gap:6px;font-family:'JetBrains Mono',monospace;font-size:11px;color:rgba(247,239,239,0.5);text-align:left;">
+              <div style="display:flex;justify-content:space-between;"><span>twitch / kick</span><span style="color:#52D67F;">5m</span></div>
+              <div style="display:flex;justify-content:space-between;"><span>youtube</span><span style="color:#52D67F;">10m</span></div>
+              <div style="display:flex;justify-content:space-between;"><span>next check</span><span style="color:#FF6268;">• 48s</span></div>
+            </div>
+          </div>
+          <h3 data-i18n="step2_title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;color:#F7EFEF;margin-bottom:8px;">Lurk Buddy watches</h3>
+          <p data-i18n="step2_desc" style="color:#6B7280;font-size:14px;line-height:1.6;max-width:200px;">Polls every 5–10 minutes across all platforms automatically.</p>
+          <div class="md:hidden" style="width:1px;height:32px;background:linear-gradient(180deg,rgba(255,98,104,0.4),rgba(255,98,104,0.1));margin-top:16px;"></div>
+        </div>
+        <div class="hidden md:flex items-center" style="padding-top:18px;flex:0 0 60px;"><div class="step-line"></div></div>
+        <div class="flex flex-col items-center text-center flex-1">
+          <div class="step-num mb-5">03</div>
+          <div style="background:#111827;border:1px solid rgba(255,98,104,0.2);border-radius:10px;padding:20px;width:100%;margin-bottom:16px;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#FF6268;margin-bottom:8px;">LIVE_TABS.STATUS</div>
+            <div style="display:flex;flex-direction:column;gap:5px;font-family:'JetBrains Mono',monospace;font-size:11px;text-align:left;">
+              <div style="display:flex;align-items:center;gap:6px;"><span style="color:#FF6268;font-size:8px;">●</span><span style="color:#F7EFEF;">bujaverso</span><span style="color:rgba(255,255,255,0.25);margin-left:auto;font-size:10px;">kick</span></div>
+              <div style="display:flex;align-items:center;gap:6px;"><span style="color:#FF6268;font-size:8px;">●</span><span style="color:#F7EFEF;">solivedemuladores</span><span style="color:rgba(255,255,255,0.25);margin-left:auto;font-size:10px;">twitch</span></div>
+              <div style="display:flex;align-items:center;gap:6px;"><span style="color:#FF6268;font-size:8px;">●</span><span style="color:#F7EFEF;">kodadono</span><span style="color:rgba(255,255,255,0.25);margin-left:auto;font-size:10px;">twitch</span></div>
+            </div>
+          </div>
+          <h3 data-i18n="step3_title" style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;color:#F7EFEF;margin-bottom:8px;">Streams open automatically</h3>
+          <p data-i18n="step3_desc" style="color:#6B7280;font-size:14px;line-height:1.6;max-width:200px;">Tabs appear the instant someone goes live. Drops collected, watch-time tracked.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOWNLOAD -->
+  <section id="download" class="py-24">
+    <div class="max-w-5xl mx-auto px-6">
+      <div class="text-center mb-16 animate-on-scroll">
+        <div class="section-label mb-3">RELEASE_REGISTRY.LATEST</div>
+        <h2 data-i18n="dl_heading" style="font-family:'Space Grotesk',sans-serif;font-size:clamp(28px,4vw,42px);font-weight:700;color:#F7EFEF;">Download Lurk Buddy</h2>
+        <p data-i18n="dl_subtitle" class="text-text-muted mt-3" style="font-size:16px;">Free. Open source. No account needed.</p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5 animate-on-scroll">
+        <div class="download-card">
+          <div style="width:56px;height:56px;border-radius:14px;background:rgba(255,98,104,0.1);border:1px solid rgba(255,98,104,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#FF6268"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          </div>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;color:#F7EFEF;margin-bottom:6px;">macOS</h3>
+          <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B7280;margin-bottom:20px;">.dmg · v0.0.6</p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <a id="dl-mac-arm64" href="https://github.com/paulomanrique/lurk-buddy/releases/download/v0.0.6/Lurk-Buddy-0.0.6-arm64.dmg" target="_blank" class="btn-primary" style="width:100%;justify-content:center;">[Apple Silicon]</a>
+            <a id="dl-mac-x64" href="https://github.com/paulomanrique/lurk-buddy/releases/download/v0.0.6/Lurk-Buddy-0.0.6-x64.dmg" target="_blank" class="btn-secondary" style="width:100%;justify-content:center;">[Intel x64]</a>
+          </div>
+        </div>
+        <div class="download-card">
+          <div style="width:56px;height:56px;border-radius:14px;background:rgba(255,98,104,0.1);border:1px solid rgba(255,98,104,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#FF6268"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          </div>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;color:#F7EFEF;margin-bottom:6px;">Windows</h3>
+          <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B7280;margin-bottom:20px;">.exe · v0.0.6</p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <a id="dl-win-x64" href="https://github.com/paulomanrique/lurk-buddy/releases/download/v0.0.6/Lurk-Buddy-0.0.6-x64.exe" target="_blank" class="btn-primary" style="width:100%;justify-content:center;">[x64]</a>
+            <a id="dl-win-arm64" href="https://github.com/paulomanrique/lurk-buddy/releases/download/v0.0.6/Lurk-Buddy-0.0.6-arm64.exe" target="_blank" class="btn-secondary" style="width:100%;justify-content:center;">[arm64]</a>
+          </div>
+        </div>
+        <div class="download-card">
+          <div style="width:56px;height:56px;border-radius:14px;background:rgba(255,98,104,0.1);border:1px solid rgba(255,98,104,0.2);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="#FF6268"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.424.424 0 00-.11.135c-.26.268-.45.6-.663.839-.199.199-.485.267-.797.4-.313.136-.658.269-.864.68-.09.189-.136.394-.132.602 0 .199.539 1.171 2.079 1.67-.127.56-.082 1.36.056 2.072.2 1.048.45 2.06.45 2.06s-.069.0-.09.1c-.073.32.05.58.19.75.18.24.42.46.66.46.12 0 .36-.09.56-.24.45-.3.6-.89.6-.89l.09.13c.61.81 2.4 1.65 4.5 1.65 1.54 0 2.86-.48 3.84-1.34.48-.43.84-.95 1.08-1.55.36-.9.39-1.92.24-2.67.28-.18.54-.45.54-.45s.42.09.66.09c.36 0 .78-.12 1.05-.42.39-.42.48-.99.27-1.38-.09-.18-.28-.33-.49-.44-.22-.11-.44-.2-.62-.3-.18-.1-.3-.2-.38-.35-.12-.21-.12-.48-.12-.72-.01-.24.02-.48.05-.72a17.89 17.89 0 00.06-1.56c0-3.48-2.84-7.26-5.94-7.26z"/></svg>
+          </div>
+          <h3 style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:22px;color:#F7EFEF;margin-bottom:6px;">Linux</h3>
+          <p style="font-family:'JetBrains Mono',monospace;font-size:11px;color:#6B7280;margin-bottom:20px;">.AppImage · v0.0.6</p>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <a id="dl-linux-x64" href="https://github.com/paulomanrique/lurk-buddy/releases/download/v0.0.6/Lurk-Buddy-0.0.6-x86_64.AppImage" target="_blank" class="btn-primary" style="width:100%;justify-content:center;">[x64]</a>
+            <a id="dl-linux-arm64" href="https://github.com/paulomanrique/lurk-buddy/releases/download/v0.0.6/Lurk-Buddy-0.0.6-arm64.AppImage" target="_blank" class="btn-secondary" style="width:100%;justify-content:center;">[arm64]</a>
+          </div>
+        </div>
+      </div>
+      <p class="text-center mt-8" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6B7280;">
+        <span data-i18n="dl_github">All releases at</span> &nbsp;<a href="https://github.com/paulomanrique/lurk-buddy/releases" target="_blank" style="color:rgba(255,98,104,0.7);text-decoration:none;">github.com/paulomanrique/lurk-buddy</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer style="border-top:1px solid rgba(255,98,104,0.1);padding:40px 24px;">
+    <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-2.5">
+        <svg width="28" height="28" viewBox="0 0 512 512" fill="none"><rect width="512" height="512" rx="256" fill="#FF6268"/><path d="M154 146C216 126 308 129 360 170C384 188 398 214 402 252C406 294 398 333 371 364C333 407 260 419 195 404C167 398 150 390 132 372C110 351 101 323 98 286C95 242 104 205 123 180C131 168 141 155 154 146Z" fill="#000"/><path d="M168 184C214 171 286 172 328 195C349 207 359 229 361 257C363 290 354 315 334 331C301 357 232 362 184 347C159 339 149 326 145 301C141 279 142 235 149 216C153 204 158 193 168 184Z" fill="#FF6268"/><rect x="175" y="181" width="168" height="150" rx="34" fill="#000"/><path d="M246 220L297 256L246 292V220Z" fill="#FF6268"/></svg>
+        <span style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:#F7EFEF;">Lurk Buddy</span>
+      </div>
+      <p style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#6B7280;text-align:center;">
+        <span data-i18n="footer_tagline">Open source. Free forever.</span> <a href="https://unlicense.org" target="_blank" style="color:rgba(255,98,104,0.6);text-decoration:none;">Unlicense</a>.
+      </p>
+      <a href="https://github.com/paulomanrique/lurk-buddy" target="_blank" class="btn-secondary" style="font-size:12px;padding:8px 16px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        github
+      </a>
+    </div>
+  </footer>
+
+  <script>
+  // ── TRANSLATIONS ────────────────────────────────────────────────────────────
+  const T = {
+    en:{nav_features:"features",nav_how:"how_it_works",nav_download:"download",nav_cta:"[download]",hero_badge:"v0.0.6 · open source · free forever",hero_tagline:"Never miss a live.",hero_subtitle:"Never lift a finger.",hero_desc:'Lurk Buddy automatically monitors your favorite streamers across <span style="color:#9146FF;font-weight:600;">Twitch</span>, <span style="color:#FF0000;font-weight:600;">YouTube</span>, and <span style="color:#53FC18;font-weight:600;">Kick</span> — and opens their streams the moment they go live. No babysitting. No missed drops.',hero_cta_dl:"[download]",hero_cta_gh:"view on github",feat_heading:"Everything you need to lurk smart.",feat_subtitle:"Built for streamers, fans, and drop hunters. Zero configuration, maximum automation.",feat1_title:"Opens streams instantly",feat1_desc:"Opens tabs automatically the moment a channel goes live. No manual checking, no missed streams.",feat2_title:"Invisible to platforms",feat2_desc:"Keeps streams active even when minimized. Platforms always think you're actively watching.",feat3_title:"Silent but counted",feat3_desc:"Muted by default, but audio is logically enabled. Drops and watch-time always register correctly.",feat4_title:"One app, all platforms",feat4_desc:"Track channels on Twitch, YouTube, and Kick from a single unified interface. No switching required.",feat5_title:"Graceful cleanup",feat5_desc:"Closes tabs when streams end, with a configurable grace period (default 90s) to handle brief disconnects.",feat6_title:"Low resource mode",feat6_desc:"Low-bandwidth mode keeps resource usage minimal while maintaining reliable stream detection and tracking.",hiw_heading:"Set it and forget it.",hiw_subtitle:"Three steps and you're done. Forever.",step1_title:"Add your channels",step1_desc:"Paste any Twitch, YouTube, or Kick URL or handle.",step2_title:"Lurk Buddy watches",step2_desc:"Polls every 5–10 minutes across all platforms automatically.",step3_title:"Streams open automatically",step3_desc:"Tabs appear the instant someone goes live. Drops collected, watch-time tracked.",dl_heading:"Download Lurk Buddy",dl_subtitle:"Free. Open source. No account needed.",dl_github:"All releases at",footer_tagline:"Open source. Free forever."},
+
+    pt:{nav_features:"recursos",nav_how:"como_funciona",nav_download:"download",nav_cta:"[download]",hero_badge:"v0.0.6 · código aberto · gratuito para sempre",hero_tagline:"Nunca perca uma live.",hero_subtitle:"Nunca levante um dedo.",hero_desc:'O Lurk Buddy monitora automaticamente seus streamers favoritos no <span style="color:#9146FF;font-weight:600;">Twitch</span>, <span style="color:#FF0000;font-weight:600;">YouTube</span> e <span style="color:#53FC18;font-weight:600;">Kick</span> — e abre as streams no momento em que entram ao vivo. Sem babysitting. Sem drops perdidos.',hero_cta_dl:"[download]",hero_cta_gh:"ver no github",feat_heading:"Tudo que você precisa para lurkar com inteligência.",feat_subtitle:"Feito para streamers, fãs e caçadores de drops. Zero configuração, máxima automação.",feat1_title:"Abre streams instantaneamente",feat1_desc:"Abre abas automaticamente no momento em que um canal entra ao vivo. Sem verificação manual, sem streams perdidas.",feat2_title:"Invisível para as plataformas",feat2_desc:"Mantém as streams ativas mesmo minimizadas. As plataformas sempre acham que você está assistindo ativamente.",feat3_title:"Silencioso mas contabilizado",feat3_desc:"Mutado por padrão, mas o áudio está logicamente ativado. Drops e tempo de exibição sempre registrados corretamente.",feat4_title:"Um app, todas as plataformas",feat4_desc:"Acompanhe canais no Twitch, YouTube e Kick em uma interface unificada. Sem necessidade de trocar de aplicativo.",feat5_title:"Encerramento elegante",feat5_desc:"Fecha abas quando as streams terminam, com um período de carência configurável (padrão 90s) para desconexões breves.",feat6_title:"Modo de baixo consumo",feat6_desc:"O modo de baixa largura de banda minimiza o uso de recursos mantendo a detecção de streams confiável.",hiw_heading:"Configure e esqueça.",hiw_subtitle:"Três passos e pronto. Para sempre.",step1_title:"Adicione seus canais",step1_desc:"Cole qualquer URL ou handle do Twitch, YouTube ou Kick.",step2_title:"Lurk Buddy monitora",step2_desc:"Verifica a cada 5–10 minutos em todas as plataformas automaticamente.",step3_title:"Streams abrem automaticamente",step3_desc:"Abas aparecem no instante em que alguém entra ao vivo. Drops coletados, tempo de exibição registrado.",dl_heading:"Baixe o Lurk Buddy",dl_subtitle:"Gratuito. Código aberto. Sem cadastro.",dl_github:"Todas as versões em",footer_tagline:"Código aberto. Gratuito para sempre."},
+
+    es:{nav_features:"características",nav_how:"cómo_funciona",nav_download:"descargar",nav_cta:"[descargar]",hero_badge:"v0.0.6 · código abierto · gratis para siempre",hero_tagline:"Nunca te pierdas un directo.",hero_subtitle:"Sin levantar un dedo.",hero_desc:'Lurk Buddy monitorea automáticamente a tus streamers favoritos en <span style="color:#9146FF;font-weight:600;">Twitch</span>, <span style="color:#FF0000;font-weight:600;">YouTube</span> y <span style="color:#53FC18;font-weight:600;">Kick</span> — y abre sus streams en el momento en que comienzan. Sin vigilancia. Sin drops perdidos.',hero_cta_dl:"[descargar]",hero_cta_gh:"ver en github",feat_heading:"Todo lo que necesitas para hacer lurk inteligente.",feat_subtitle:"Hecho para streamers, fans y cazadores de drops. Cero configuración, máxima automatización.",feat1_title:"Abre streams al instante",feat1_desc:"Abre pestañas automáticamente en el momento en que un canal se pone en directo. Sin revisión manual, sin streams perdidas.",feat2_title:"Invisible para las plataformas",feat2_desc:"Mantiene los streams activos incluso minimizados. Las plataformas siempre creen que estás viendo activamente.",feat3_title:"Silencioso pero contado",feat3_desc:"Silenciado por defecto, pero el audio está lógicamente activado. Los drops y el tiempo de visualización siempre se registran.",feat4_title:"Una app, todas las plataformas",feat4_desc:"Sigue canales en Twitch, YouTube y Kick desde una interfaz unificada. Sin necesidad de cambiar de app.",feat5_title:"Cierre elegante",feat5_desc:"Cierra pestañas cuando los streams terminan, con un período de gracia configurable (por defecto 90s).",feat6_title:"Modo de bajo consumo",feat6_desc:"El modo de bajo ancho de banda minimiza el uso de recursos con detección de streams confiable.",hiw_heading:"Configúralo y olvídate.",hiw_subtitle:"Tres pasos y listo. Para siempre.",step1_title:"Añade tus canales",step1_desc:"Pega cualquier URL o handle de Twitch, YouTube o Kick.",step2_title:"Lurk Buddy vigila",step2_desc:"Comprueba cada 5–10 minutos en todas las plataformas automáticamente.",step3_title:"Los streams se abren solos",step3_desc:"Las pestañas aparecen en el instante en que alguien se pone en directo. Drops recogidos.",dl_heading:"Descarga Lurk Buddy",dl_subtitle:"Gratis. Código abierto. Sin cuenta.",dl_github:"Todas las versiones en",footer_tagline:"Código abierto. Gratis para siempre."},
+
+    de:{nav_features:"features",nav_how:"so_funktionierts",nav_download:"download",nav_cta:"[download]",hero_badge:"v0.0.6 · open source · kostenlos für immer",hero_tagline:"Verpasse nie ein Live.",hero_subtitle:"Ohne einen Finger zu rühren.",hero_desc:'Lurk Buddy überwacht automatisch deine Lieblingsstreamer auf <span style="color:#9146FF;font-weight:600;">Twitch</span>, <span style="color:#FF0000;font-weight:600;">YouTube</span> und <span style="color:#53FC18;font-weight:600;">Kick</span> — und öffnet ihre Streams, sobald sie live gehen. Kein Aufpassen. Keine verpassten Drops.',hero_cta_dl:"[download]",hero_cta_gh:"auf github ansehen",feat_heading:"Alles, was du zum cleveren Lurken brauchst.",feat_subtitle:"Für Streamer, Fans und Drop-Jäger. Null Konfiguration, maximale Automatisierung.",feat1_title:"Öffnet Streams sofort",feat1_desc:"Öffnet Tabs automatisch, sobald ein Kanal live geht. Kein manuelles Prüfen, keine verpassten Streams.",feat2_title:"Unsichtbar für Plattformen",feat2_desc:"Hält Streams aktiv, auch wenn minimiert. Plattformen glauben immer, du schaust aktiv zu.",feat3_title:"Stumm aber gezählt",feat3_desc:"Standardmäßig stumm, aber Audio ist logisch aktiviert. Drops und Watchtime werden korrekt registriert.",feat4_title:"Eine App, alle Plattformen",feat4_desc:"Verfolge Kanäle auf Twitch, YouTube und Kick in einer einzigen Oberfläche. Kein Wechseln nötig.",feat5_title:"Sauberes Beenden",feat5_desc:"Schließt Tabs wenn Streams enden, mit konfigurierbarer Schonfrist (Standard 90s).",feat6_title:"Ressourcenschonender Modus",feat6_desc:"Niedrigbandbreiten-Modus minimiert Ressourcenverbrauch bei zuverlässiger Stream-Erkennung.",hiw_heading:"Einrichten und vergessen.",hiw_subtitle:"Drei Schritte und fertig. Für immer.",step1_title:"Kanäle hinzufügen",step1_desc:"Füge eine Twitch-, YouTube- oder Kick-URL oder einen Handle ein.",step2_title:"Lurk Buddy beobachtet",step2_desc:"Prüft alle 5–10 Minuten automatisch auf allen Plattformen.",step3_title:"Streams öffnen automatisch",step3_desc:"Tabs erscheinen sofort, wenn jemand live geht. Drops gesammelt, Watchtime erfasst.",dl_heading:"Lurk Buddy herunterladen",dl_subtitle:"Kostenlos. Open Source. Kein Konto nötig.",dl_github:"Alle Versionen auf",footer_tagline:"Open Source. Kostenlos für immer."},
+
+    fr:{nav_features:"fonctionnalités",nav_how:"comment_ça_marche",nav_download:"télécharger",nav_cta:"[télécharger]",hero_badge:"v0.0.6 · open source · gratuit pour toujours",hero_tagline:"Ne ratez plus aucun live.",hero_subtitle:"Sans lever le petit doigt.",hero_desc:'Lurk Buddy surveille automatiquement vos streamers préférés sur <span style="color:#9146FF;font-weight:600;">Twitch</span>, <span style="color:#FF0000;font-weight:600;">YouTube</span> et <span style="color:#53FC18;font-weight:600;">Kick</span> — et ouvre leurs streams dès qu\'ils passent en direct. Aucune surveillance. Aucun drop raté.',hero_cta_dl:"[télécharger]",hero_cta_gh:"voir sur github",feat_heading:"Tout ce qu'il faut pour lurker intelligemment.",feat_subtitle:"Conçu pour les streamers, fans et chasseurs de drops. Zéro configuration, automatisation maximale.",feat1_title:"Ouvre les streams instantanément",feat1_desc:"Ouvre des onglets automatiquement dès qu'une chaîne passe en direct. Aucune vérification manuelle.",feat2_title:"Invisible pour les plateformes",feat2_desc:"Maintient les streams actifs même minimisés. Les plateformes pensent toujours que vous regardez.",feat3_title:"Silencieux mais comptabilisé",feat3_desc:"Muet par défaut, mais l'audio est logiquement activé. Les drops et le temps de visionnage sont enregistrés.",feat4_title:"Une app, toutes les plateformes",feat4_desc:"Suivez des chaînes sur Twitch, YouTube et Kick depuis une interface unifiée.",feat5_title:"Fermeture élégante",feat5_desc:"Ferme les onglets à la fin des streams, avec une période de grâce configurable (90s par défaut).",feat6_title:"Mode économie de ressources",feat6_desc:"Le mode faible bande passante minimise l'utilisation des ressources avec détection fiable des streams.",hiw_heading:"Configurez et oubliez.",hiw_subtitle:"Trois étapes et c'est terminé. Pour toujours.",step1_title:"Ajoutez vos chaînes",step1_desc:"Collez n'importe quelle URL ou identifiant Twitch, YouTube ou Kick.",step2_title:"Lurk Buddy surveille",step2_desc:"Vérifie toutes les 5 à 10 minutes sur toutes les plateformes automatiquement.",step3_title:"Les streams s'ouvrent automatiquement",step3_desc:"Les onglets apparaissent dès que quelqu'un passe en direct. Drops collectés.",dl_heading:"Télécharger Lurk Buddy",dl_subtitle:"Gratuit. Open source. Sans compte.",dl_github:"Toutes les versions sur",footer_tagline:"Open source. Gratuit pour toujours."},
+
+    nl:{nav_features:"functies",nav_how:"hoe_het_werkt",nav_download:"downloaden",nav_cta:"[downloaden]",hero_badge:"v0.0.6 · open source · voor altijd gratis",hero_tagline:"Mis nooit meer een live.",hero_subtitle:"Zonder een vinger te verroeren.",hero_desc:'Lurk Buddy bewaakt automatisch je favoriete streamers op <span style="color:#9146FF;font-weight:600;">Twitch</span>, <span style="color:#FF0000;font-weight:600;">YouTube</span> en <span style="color:#53FC18;font-weight:600;">Kick</span> — en opent hun streams zodra ze live gaan. Geen handmatige controle. Geen gemiste drops.',hero_cta_dl:"[downloaden]",hero_cta_gh:"bekijk op github",feat_heading:"Alles wat je nodig hebt om slim te lurken.",feat_subtitle:"Gemaakt voor streamers, fans en drop-jagers. Nul configuratie, maximale automatisering.",feat1_title:"Opent streams direct",feat1_desc:"Opent tabbladen automatisch zodra een kanaal live gaat. Geen handmatige controle, geen gemiste streams.",feat2_title:"Onzichtbaar voor platforms",feat2_desc:"Houdt streams actief, zelfs geminimaliseerd. Platforms denken altijd dat je actief kijkt.",feat3_title:"Stil maar geteld",feat3_desc:"Standaard gedempt, maar audio is logisch ingeschakeld. Drops en kijktijd worden altijd correct geregistreerd.",feat4_title:"Eén app, alle platforms",feat4_desc:"Volg kanalen op Twitch, YouTube en Kick vanuit één interface. Geen wisselen nodig.",feat5_title:"Nette afsluiting",feat5_desc:"Sluit tabbladen als streams eindigen, met een instelbare respijtperiode (standaard 90s).",feat6_title:"Laag verbruiksmodus",feat6_desc:"Lage-bandbreedtemodus houdt resourcegebruik minimaal met betrouwbare streamdetectie.",hiw_heading:"Instellen en vergeten.",hiw_subtitle:"Drie stappen en je bent klaar. Voor altijd.",step1_title:"Voeg je kanalen toe",step1_desc:"Plak een Twitch-, YouTube- of Kick-URL of gebruikersnaam.",step2_title:"Lurk Buddy bewaakt",step2_desc:"Controleert elke 5–10 minuten op alle platforms automatisch.",step3_title:"Streams openen automatisch",step3_desc:"Tabbladen verschijnen zodra iemand live gaat. Drops verzameld, kijktijd bijgehouden.",dl_heading:"Download Lurk Buddy",dl_subtitle:"Gratis. Open source. Geen account nodig.",dl_github:"Alle releases op",footer_tagline:"Open source. Voor altijd gratis."},
+
+    ru:{nav_features:"функции",nav_how:"как_это_работает",nav_download:"скачать",nav_cta:"[скачать]",hero_badge:"v0.0.6 · открытый код · бесплатно навсегда",hero_tagline:"Не пропусти ни один стрим.",hero_subtitle:"Без лишних усилий.",hero_desc:'Lurk Buddy автоматически следит за твоими любимыми стримерами на <span style="color:#9146FF;font-weight:600;">Twitch</span>, <span style="color:#FF0000;font-weight:600;">YouTube</span> и <span style="color:#53FC18;font-weight:600;">Kick</span> — и открывает стримы в момент начала трансляции. Без ручного контроля. Без пропущенных дропов.',hero_cta_dl:"[скачать]",hero_cta_gh:"смотреть на github",feat_heading:"Всё для умного лурка.",feat_subtitle:"Для стримеров, фанатов и охотников за дропами. Ноль настроек, максимум автоматизации.",feat1_title:"Открывает стримы мгновенно",feat1_desc:"Открывает вкладки автоматически, как только канал выходит в эфир. Без ручной проверки.",feat2_title:"Невидим для платформ",feat2_desc:"Удерживает стримы активными даже в свёрнутом виде. Платформы считают, что ты смотришь.",feat3_title:"Тихо, но засчитывается",feat3_desc:"По умолчанию без звука, но аудио логически включено. Дропы и время просмотра регистрируются корректно.",feat4_title:"Одно приложение — все платформы",feat4_desc:"Следи за каналами на Twitch, YouTube и Kick в едином интерфейсе. Никакого переключения.",feat5_title:"Аккуратное завершение",feat5_desc:"Закрывает вкладки после окончания стрима с настраиваемым периодом ожидания (по умолчанию 90с).",feat6_title:"Режим экономии ресурсов",feat6_desc:"Режим низкой пропускной способности минимизирует потребление при надёжном обнаружении стримов.",hiw_heading:"Настрой и забудь.",hiw_subtitle:"Три шага — и готово. Навсегда.",step1_title:"Добавь каналы",step1_desc:"Вставь любой URL или никнейм с Twitch, YouTube или Kick.",step2_title:"Lurk Buddy следит",step2_desc:"Проверяет каждые 5–10 минут на всех платформах автоматически.",step3_title:"Стримы открываются автоматически",step3_desc:"Вкладки появляются мгновенно, как только кто-то выходит в эфир. Дропы собраны.",dl_heading:"Скачать Lurk Buddy",dl_subtitle:"Бесплатно. Открытый код. Без регистрации.",dl_github:"Все версии на",footer_tagline:"Открытый код. Бесплатно навсегда."},
+
+    sr:{nav_features:"funkcije",nav_how:"kako_radi",nav_download:"preuzmi",nav_cta:"[preuzmi]",hero_badge:"v0.0.6 · otvoreni kod · besplatno zauvek",hero_tagline:"Nikad ne propusti prenos uživo.",hero_subtitle:"Bez ikakvog napora.",hero_desc:'Lurk Buddy automatski prati tvoje omiljene strimere na <span style="color:#9146FF;font-weight:600;">Twitch</span>, <span style="color:#FF0000;font-weight:600;">YouTube</span> i <span style="color:#53FC18;font-weight:600;">Kick</span> — i otvara njihove strimove čim počnu. Bez ručnog nadzora. Bez propuštenih dropova.',hero_cta_dl:"[preuzmi]",hero_cta_gh:"pogledaj na githubu",feat_heading:"Sve što ti treba za pametno vrebanje.",feat_subtitle:"Za strimere, fanove i lovce na dropove. Nula podešavanja, maksimalna automatizacija.",feat1_title:"Otvara strimove odmah",feat1_desc:"Automatski otvara tabove čim kanal počne da strima. Bez ručne provere, bez propuštenih strimova.",feat2_title:"Nevidljiv za platforme",feat2_desc:"Drži strimove aktivnim čak i kad su minimizirani. Platforme uvek misle da aktivno gledaš.",feat3_title:"Isključen zvuk, ali se broji",feat3_desc:"Podrazumevano bez zvuka, ali audio je logički omogućen. Dropovi i vreme gledanja se ispravno beleže.",feat4_title:"Jedna aplikacija, sve platforme",feat4_desc:"Prati kanale na Twitchu, YouTubeu i Kicku iz jednog interfejsa. Nema prebacivanja.",feat5_title:"Elegantno zatvaranje",feat5_desc:"Zatvara tabove kad strimovi završe, sa podesivim periodom čekanja (podrazumevano 90s).",feat6_title:"Režim niskih resursa",feat6_desc:"Mod male propusnosti minimizuje potrošnju resursa uz pouzdano otkrivanje strimova.",hiw_heading:"Podesi i zaboravi.",hiw_subtitle:"Tri koraka i gotovo. Zauvek.",step1_title:"Dodaj svoje kanale",step1_desc:"Nalepi bilo koji Twitch, YouTube ili Kick URL ili korisničko ime.",step2_title:"Lurk Buddy nadgleda",step2_desc:"Proverava svakih 5–10 minuta na svim platformama automatski.",step3_title:"Strimovi se otvaraju automatski",step3_desc:"Tabovi se pojavljuju čim neko počne da strima. Dropovi prikupljeni.",dl_heading:"Preuzmi Lurk Buddy",dl_subtitle:"Besplatno. Otvoreni kod. Bez naloga.",dl_github:"Sva izdanja na",footer_tagline:"Otvoreni kod. Besplatno zauvek."},
+
+    ar:{nav_features:"الميزات",nav_how:"كيف_يعمل",nav_download:"تحميل",nav_cta:"[تحميل]",hero_badge:"v0.0.6 · مفتوح المصدر · مجاني للأبد",hero_tagline:"لا تفوّت بثاً واحداً.",hero_subtitle:"دون أن تحرّك ساكناً.",hero_desc:'يراقب Lurk Buddy تلقائياً مباثيك المفضلين على <span style="color:#9146FF;font-weight:600;">Twitch</span> و<span style="color:#FF0000;font-weight:600;">YouTube</span> و<span style="color:#53FC18;font-weight:600;">Kick</span> — ويفتح بثوثهم لحظة بدء البث المباشر. لا مراقبة يدوية. لا drops فائتة.',hero_cta_dl:"[تحميل]",hero_cta_gh:"عرض على github",feat_heading:"كل ما تحتاجه للمشاهدة الذكية.",feat_subtitle:"مصمم للمذيعين والمعجبين وصيادي الجوائز. لا إعداد، أقصى أتمتة.",feat1_title:"يفتح البثوث فوراً",feat1_desc:"يفتح تبويبات تلقائياً لحظة بدء البث المباشر. لا تحقق يدوي، لا بثوث فائتة.",feat2_title:"غير مرئي للمنصات",feat2_desc:"يبقي البثوث نشطة حتى عند التصغير. المنصات دائماً تعتقد أنك تشاهد بنشاط.",feat3_title:"صامت لكن محسوب",feat3_desc:"مكتوم افتراضياً، لكن الصوت مفعّل منطقياً. تُسجَّل الجوائز ووقت المشاهدة دائماً بشكل صحيح.",feat4_title:"تطبيق واحد، كل المنصات",feat4_desc:"تابع القنوات على Twitch وYouTube وKick من واجهة موحدة. لا حاجة للتبديل.",feat5_title:"إغلاق أنيق",feat5_desc:"يغلق التبويبات عند انتهاء البثوث، مع فترة سماح قابلة للضبط (90 ثانية افتراضياً).",feat6_title:"وضع توفير الموارد",feat6_desc:"وضع النطاق الترددي المنخفض يبقي استخدام الموارد في حده الأدنى مع اكتشاف موثوق للبثوث.",hiw_heading:"اضبطه وانساه.",hiw_subtitle:"ثلاث خطوات وانتهيت. للأبد.",step1_title:"أضف قنواتك",step1_desc:"الصق أي رابط أو معرّف من Twitch أو YouTube أو Kick.",step2_title:"Lurk Buddy يراقب",step2_desc:"يتحقق كل 5 إلى 10 دقائق على جميع المنصات تلقائياً.",step3_title:"البثوث تفتح تلقائياً",step3_desc:"تظهر التبويبات فور بدء أي شخص للبث المباشر. جوائز محصودة.",dl_heading:"حمّل Lurk Buddy",dl_subtitle:"مجاني. مفتوح المصدر. لا حساب مطلوب.",dl_github:"جميع الإصدارات على",footer_tagline:"مفتوح المصدر. مجاني للأبد."},
+
+    zh:{nav_features:"功能",nav_how:"使用方法",nav_download:"下载",nav_cta:"[下载]",hero_badge:"v0.0.6 · 开源 · 永久免费",hero_tagline:"永不错过直播。",hero_subtitle:"无需动手操作。",hero_desc:'Lurk Buddy 自动监控您在 <span style="color:#9146FF;font-weight:600;">Twitch</span>、<span style="color:#FF0000;font-weight:600;">YouTube</span> 和 <span style="color:#53FC18;font-weight:600;">Kick</span> 上喜爱的主播，并在直播开始的瞬间自动打开。无需人工监看，不再错过任何掉落奖励。',hero_cta_dl:"[下载]",hero_cta_gh:"在 github 上查看",feat_heading:"智能守播所需的一切。",feat_subtitle:"专为主播、粉丝和奖励猎手打造。零配置，全自动。",feat1_title:"即时开启直播",feat1_desc:"当频道开播时，自动打开标签页。无需手动检查，不遗漏任何直播。",feat2_title:"对平台不可见",feat2_desc:"即使窗口最小化，直播也保持活跃。平台始终认为您在积极观看。",feat3_title:"静音但计入观看",feat3_desc:"默认静音，但音频在逻辑上处于启用状态。掉落奖励和观看时长始终正确记录。",feat4_title:"一个应用，所有平台",feat4_desc:"在统一界面追踪 Twitch、YouTube 和 Kick 上的频道。无需切换应用。",feat5_title:"优雅的关闭机制",feat5_desc:"直播结束时关闭标签页，可配置宽限期（默认90秒）以处理短暂断线。",feat6_title:"低资源模式",feat6_desc:"低带宽模式在保持可靠直播检测的同时，将资源占用降至最低。",hiw_heading:"设置后即可忘记。",hiw_subtitle:"三步完成，永久有效。",step1_title:"添加您的频道",step1_desc:"粘贴任何 Twitch、YouTube 或 Kick 的链接或用户名。",step2_title:"Lurk Buddy 自动监控",step2_desc:"每 5-10 分钟自动轮询所有平台。",step3_title:"直播自动打开",step3_desc:"当有人开播时，标签页立即出现。奖励已收集，观看时长已记录。",dl_heading:"下载 Lurk Buddy",dl_subtitle:"免费。开源。无需账号。",dl_github:"所有版本发布于",footer_tagline:"开源。永久免费。"},
+
+    ja:{nav_features:"機能",nav_how:"使い方",nav_download:"ダウンロード",nav_cta:"[ダウンロード]",hero_badge:"v0.0.6 · オープンソース · 永久無料",hero_tagline:"ライブを見逃さない。",hero_subtitle:"指一本動かさずに。",hero_desc:'Lurk Buddy は <span style="color:#9146FF;font-weight:600;">Twitch</span>、<span style="color:#FF0000;font-weight:600;">YouTube</span>、<span style="color:#53FC18;font-weight:600;">Kick</span> のお気に入りの配信者を自動的に監視し、配信が始まった瞬間にストリームを開きます。手動確認不要。ドロップも見逃しません。',hero_cta_dl:"[ダウンロード]",hero_cta_gh:"github で見る",feat_heading:"スマートな視聴に必要なすべて。",feat_subtitle:"配信者、ファン、ドロップハンターのために。設定ゼロ、最大自動化。",feat1_title:"ストリームを即座に開く",feat1_desc:"チャンネルが配信を開始した瞬間に自動でタブを開きます。手動確認不要、見逃しゼロ。",feat2_title:"プラットフォームに気付かれない",feat2_desc:"最小化しても配信をアクティブに保ちます。プラットフォームは常にあなたが視聴中だと認識します。",feat3_title:"無音でもカウントされる",feat3_desc:"デフォルトでミュートですが、音声は論理的に有効です。ドロップと視聴時間は常に正しく記録されます。",feat4_title:"1つのアプリ、全プラットフォーム",feat4_desc:"Twitch、YouTube、Kick のチャンネルを一つの統一インターフェースで管理。切り替え不要。",feat5_title:"スマートな終了処理",feat5_desc:"配信終了時にタブを閉じます。猶予期間を設定可能（デフォルト90秒）。",feat6_title:"省リソースモード",feat6_desc:"低帯域幅モードで、信頼性の高い配信検出を維持しながらリソース使用量を最小限に抑えます。",hiw_heading:"設定したら忘れていい。",hiw_subtitle:"3ステップで完了。永久に。",step1_title:"チャンネルを追加",step1_desc:"Twitch、YouTube、Kick の URL またはユーザー名を貼り付けるだけ。",step2_title:"Lurk Buddy が監視",step2_desc:"全プラットフォームを5〜10分ごとに自動でポーリングします。",step3_title:"配信が自動で開く",step3_desc:"誰かが配信を始めた瞬間にタブが表示されます。ドロップ収集済み、視聴時間記録済み。",dl_heading:"Lurk Buddy をダウンロード",dl_subtitle:"無料。オープンソース。アカウント不要。",dl_github:"すべてのリリースは",footer_tagline:"オープンソース。永久無料。"},
+
+    ko:{nav_features:"기능",nav_how:"사용_방법",nav_download:"다운로드",nav_cta:"[다운로드]",hero_badge:"v0.0.6 · 오픈소스 · 영원히 무료",hero_tagline:"라이브를 절대 놓치지 마세요.",hero_subtitle:"손가락 하나 움직이지 않고.",hero_desc:'Lurk Buddy는 <span style="color:#9146FF;font-weight:600;">Twitch</span>, <span style="color:#FF0000;font-weight:600;">YouTube</span>, <span style="color:#53FC18;font-weight:600;">Kick</span>의 즐겨찾는 스트리머를 자동으로 모니터링하고, 방송이 시작되는 순간 스트림을 엽니다. 수동 확인 불필요. 놓친 드롭 없음.',hero_cta_dl:"[다운로드]",hero_cta_gh:"github에서 보기",feat_heading:"스마트한 잠복 시청을 위한 모든 것.",feat_subtitle:"스트리머, 팬, 드롭 헌터를 위해 제작. 설정 제로, 최대 자동화.",feat1_title:"스트림을 즉시 열기",feat1_desc:"채널이 방송을 시작하는 순간 자동으로 탭을 엽니다. 수동 확인 불필요, 놓친 스트림 없음.",feat2_title:"플랫폼에게 보이지 않음",feat2_desc:"최소화 상태에서도 스트림을 활성 상태로 유지합니다. 플랫폼은 항상 당신이 시청 중이라고 인식합니다.",feat3_title:"무음이지만 카운트됨",feat3_desc:"기본적으로 음소거 상태이지만 오디오는 논리적으로 활성화되어 있습니다. 드롭과 시청 시간이 항상 올바르게 기록됩니다.",feat4_title:"하나의 앱, 모든 플랫폼",feat4_desc:"단일 통합 인터페이스에서 Twitch, YouTube, Kick 채널을 관리하세요. 전환 불필요.",feat5_title:"깔끔한 종료",feat5_desc:"방송이 끝나면 탭을 닫으며, 유예 기간(기본 90초)을 설정할 수 있습니다.",feat6_title:"저자원 모드",feat6_desc:"저대역폭 모드로 안정적인 스트림 감지를 유지하면서 리소스 사용량을 최소화합니다.",hiw_heading:"설정하고 잊어버리세요.",hiw_subtitle:"세 단계면 끝. 영원히.",step1_title:"채널 추가",step1_desc:"Twitch, YouTube, Kick의 URL 또는 닉네임을 붙여넣으세요.",step2_title:"Lurk Buddy가 감시",step2_desc:"모든 플랫폼을 5-10분마다 자동으로 폴링합니다.",step3_title:"스트림이 자동으로 열림",step3_desc:"누군가 방송을 시작하는 순간 탭이 나타납니다. 드롭 수집 완료.",dl_heading:"Lurk Buddy 다운로드",dl_subtitle:"무료. 오픈소스. 계정 불필요.",dl_github:"모든 릴리스",footer_tagline:"오픈소스. 영원히 무료."}
+  };
+
+  // ── LANGUAGE LABELS ─────────────────────────────────────────────────────────
+  const LANG_LABELS = {en:"EN",pt:"PT",es:"ES",de:"DE",fr:"FR",nl:"NL",ru:"RU",sr:"SR",ar:"AR",zh:"ZH",ja:"JA",ko:"KO"};
+  const RTL_LANGS = new Set(['ar']);
+
+  // ── DETECT & APPLY ──────────────────────────────────────────────────────────
+  function detectLang() {
+    const saved = localStorage.getItem('lb_lang');
+    if (saved && T[saved]) return saved;
+    const prefs = navigator.languages || [navigator.language || 'en'];
+    for (const p of prefs) {
+      const code = p.split('-')[0].toLowerCase();
+      if (T[code]) return code;
+    }
+    return 'en';
+  }
+
+  function applyLang(lang) {
+    const t = T[lang] || T.en;
+    // text nodes
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const v = t[el.dataset.i18n];
+      if (v !== undefined) el.textContent = v;
+    });
+    // html nodes
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+      const v = t[el.dataset.i18nHtml];
+      if (v !== undefined) el.innerHTML = v;
+    });
+    // RTL
+    const isRTL = RTL_LANGS.has(lang);
+    document.documentElement.lang = lang;
+    document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+    // update button label
+    document.getElementById('lang-current').textContent = LANG_LABELS[lang] || lang.toUpperCase();
+    // update active option
+    document.querySelectorAll('.lang-option').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+    // update page title
+    document.title = `Lurk Buddy — ${t.hero_tagline} ${t.hero_subtitle}`;
+    localStorage.setItem('lb_lang', lang);
+  }
+
+  // ── DROPDOWN ────────────────────────────────────────────────────────────────
+  function toggleLangMenu() {
+    document.getElementById('lang-menu').classList.toggle('open');
+  }
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.lang-dropdown')) {
+      document.getElementById('lang-menu').classList.remove('open');
+    }
+  });
+  document.querySelectorAll('.lang-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      applyLang(btn.dataset.lang);
+      document.getElementById('lang-menu').classList.remove('open');
+    });
+  });
+
+  // ── INIT ────────────────────────────────────────────────────────────────────
+  applyLang(detectLang());
+
+  // ── SCROLL ANIMATIONS ───────────────────────────────────────────────────────
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, {threshold:0.1, rootMargin:'0px 0px -40px 0px'});
+  document.querySelectorAll('.animate-on-scroll').forEach((el,i) => {
+    el.style.transitionDelay = `${i*0.04}s`;
+    observer.observe(el);
+  });
+
+  // ── FEATURE CARD GLOW ───────────────────────────────────────────────────────
+  document.querySelectorAll('.feature-card').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${((e.clientX-r.left)/r.width*100).toFixed(1)}%`);
+      card.style.setProperty('--my', `${((e.clientY-r.top)/r.height*100).toFixed(1)}%`);
+    });
+  });
+
+  // ── SMOOTH SCROLL ───────────────────────────────────────────────────────────
+  document.querySelectorAll('a[href^="#"]').forEach(link => {
+    link.addEventListener('click', e => {
+      const t = document.querySelector(link.getAttribute('href'));
+      if (t) { e.preventDefault(); t.scrollIntoView({behavior:'smooth',block:'start'}); }
+    });
+  });
+
+  // ── NAV ACTIVE ──────────────────────────────────────────────────────────────
+  const sections = document.querySelectorAll('section[id]');
+  const navLinks = document.querySelectorAll('nav a[href^="#"]');
+  window.addEventListener('scroll', () => {
+    let cur = '';
+    sections.forEach(s => { if (window.scrollY >= s.offsetTop-100) cur = s.id; });
+    navLinks.forEach(l => { l.style.color = l.getAttribute('href')===`#${cur}` ? '#FF6268' : ''; });
+  });
+  </script>
+</body>
+</html>
