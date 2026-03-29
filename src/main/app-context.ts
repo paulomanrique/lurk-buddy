@@ -188,6 +188,8 @@ export class AppContext {
       pollingRunning: this.polling.isRunning(),
       pollingChannelId: this.polling.currentChannelId(),
       currentPollingChannelIds: this.polling.currentChannelIds(),
+      pollingRetryAttempts: this.polling.retryAttemptEntries(),
+      timedOutChannelIds: this.polling.timedOutChannelIds(),
       completedPollingChannelIds: this.polling.completedChannelIds(),
       shutdown: this.shutdownState
     }));

@@ -11,6 +11,8 @@ interface AppState {
   pollingRunning: boolean;
   pollingChannelId: string | null;
   currentPollingChannelIds: string[];
+  pollingRetryAttempts: Record<string, number>;
+  timedOutChannelIds: string[];
   completedPollingChannelIds: string[];
   selectedSessionId: string | null;
   panelOnly: boolean;
@@ -31,6 +33,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   pollingRunning: false,
   pollingChannelId: null,
   currentPollingChannelIds: [],
+  pollingRetryAttempts: {},
+  timedOutChannelIds: [],
   completedPollingChannelIds: [],
   selectedSessionId: null,
   panelOnly: false,
@@ -55,6 +59,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       pollingRunning: snapshot.pollingRunning,
       pollingChannelId: snapshot.pollingChannelId,
       currentPollingChannelIds: snapshot.currentPollingChannelIds,
+      pollingRetryAttempts: snapshot.pollingRetryAttempts,
+      timedOutChannelIds: snapshot.timedOutChannelIds,
       completedPollingChannelIds: snapshot.completedPollingChannelIds,
       shutdown: snapshot.shutdown,
       selectedSessionId,

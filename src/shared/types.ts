@@ -129,6 +129,8 @@ export interface RendererSnapshot {
   pollingRunning: boolean;
   pollingChannelId: string | null;
   currentPollingChannelIds: string[];
+  pollingRetryAttempts: Record<string, number>;
+  timedOutChannelIds: string[];
   completedPollingChannelIds: string[];
   shutdown: ShutdownState;
 }

@@ -16,12 +16,23 @@ import { PollRunRepository } from './poll-run-repository.js';
 import { SettingsService } from '../settings/settings-service.js';
 
 const POLL_CONCURRENCY = 5;
+const POLL_TIMEOUT_MS = 10_000;
+const MAX_POLL_RETRIES = 5;
+
+class PollTimeoutError extends Error {
+  constructor() {
+    super('Polling timed out');
+    this.name = 'PollTimeoutError';
+  }
+}
 
 export class PollingService {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
   private currentTick: Promise<void> | null = null;
   private currentChannels = new Set<string>();
+  private retryAttempts = new Map<string, number>();
+  private timedOutChannels = new Set<string>();
   private completedChannels = new Set<string>();
   private onStateChanged: (() => void) | null = null;
   private hasCompletedInitialSweep = false;
@@ -65,6 +76,14 @@ export class PollingService {
     return [...this.currentChannels];
   }
 
+  retryAttemptEntries(): Record<string, number> {
+    return Object.fromEntries(this.retryAttempts);
+  }
+
+  timedOutChannelIds(): string[] {
+    return [...this.timedOutChannels];
+  }
+
   completedChannelIds(): string[] {
     return [...this.completedChannels];
   }
@@ -85,6 +104,8 @@ export class PollingService {
 
     this.running = true;
     this.currentChannels.clear();
+    this.retryAttempts.clear();
+    this.timedOutChannels.clear();
     this.completedChannels.clear();
     this.onStateChanged?.();
     this.currentTick = (async () => {
@@ -106,6 +127,8 @@ export class PollingService {
       } finally {
         this.running = false;
         this.currentChannels.clear();
+        this.retryAttempts.clear();
+        this.timedOutChannels.clear();
         this.completedChannels.clear();
         this.currentTick = null;
         this.onStateChanged?.();
@@ -145,7 +168,7 @@ export class PollingService {
 
       const adapter = adapters[channel.platform];
       try {
-        const status = await adapter.getChannelStatus(channel);
+        const status = await this.pollChannelWithRetry(channel);
         this.channelService.touchPoll(channel.id);
         if (status.isLive) {
           this.pollRuns.record(channel.id, 'live', status.title);
@@ -163,16 +186,68 @@ export class PollingService {
           await this.sessions.closeByChannelId(channel.id, settings.closeGracePeriodSeconds);
         }
       } catch (error) {
-        this.pollRuns.record(channel.id, 'error', error instanceof Error ? error.message : 'Unknown error');
+        const detail =
+          error instanceof PollTimeoutError
+            ? 'timeout'
+            : error instanceof Error
+              ? error.message
+              : 'Unknown error';
+        this.pollRuns.record(channel.id, 'error', detail);
+        if (error instanceof PollTimeoutError) {
+          this.timedOutChannels.add(channel.id);
+        }
         this.logs.write('error', 'polling', 'Polling failed', {
           channelId: channel.id,
-          error: error instanceof Error ? error.message : String(error)
+          error: detail
         });
       } finally {
         this.currentChannels.delete(channel.id);
+        this.retryAttempts.delete(channel.id);
         this.completedChannels.add(channel.id);
         this.onStateChanged?.();
       }
     }
+  }
+
+  private async pollChannelWithRetry(channel: Channel) {
+    const adapter = adapters[channel.platform];
+
+    for (let attempt = 0; attempt <= MAX_POLL_RETRIES; attempt += 1) {
+      try {
+        if (attempt > 0) {
+          this.retryAttempts.set(channel.id, attempt);
+          this.onStateChanged?.();
+        }
+        return await this.withTimeout(adapter.getChannelStatus(channel), POLL_TIMEOUT_MS);
+      } catch (error) {
+        if (!(error instanceof PollTimeoutError)) {
+          throw error;
+        }
+        if (attempt === MAX_POLL_RETRIES) {
+          throw error;
+        }
+      }
+    }
+
+    throw new PollTimeoutError();
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    return await new Promise<T>((resolve, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new PollTimeoutError());
+      }, timeoutMs);
+
+      promise.then(
+        (value) => {
+          clearTimeout(timeoutId);
+          resolve(value);
+        },
+        (error) => {
+          clearTimeout(timeoutId);
+          reject(error);
+        }
+      );
+    });
   }
 }

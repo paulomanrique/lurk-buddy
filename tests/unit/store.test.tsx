@@ -30,6 +30,8 @@ const snapshot = {
   pollingRunning: false,
   pollingChannelId: null,
   currentPollingChannelIds: [],
+  pollingRetryAttempts: {},
+  timedOutChannelIds: [],
   completedPollingChannelIds: [],
   shutdown: {
     status: 'idle' as const,
@@ -90,6 +92,8 @@ describe('App shell', () => {
       pollingRunning: false,
       pollingChannelId: null,
       currentPollingChannelIds: [],
+      pollingRetryAttempts: {},
+      timedOutChannelIds: [],
       completedPollingChannelIds: [],
       shutdown: { status: 'idle', detail: null },
       selectedSessionId: null,

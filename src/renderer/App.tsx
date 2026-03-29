@@ -39,6 +39,8 @@ export function App() {
     pollingRunning,
     pollingChannelId,
     currentPollingChannelIds,
+    pollingRetryAttempts,
+    timedOutChannelIds,
     completedPollingChannelIds,
     selectedSessionId,
     panelOnly,
@@ -325,8 +327,15 @@ export function App() {
 
   function renderChannelStatus(channelId: string) {
     if (showRefreshStatuses) {
+      const retryAttempt = pollingRetryAttempts[channelId];
+      if (currentPollingChannelIds.includes(channelId) && retryAttempt) {
+        return <span className="ch-status-checking">Retrying {retryAttempt}/{5}...</span>;
+      }
       if (currentPollingChannelIds.includes(channelId)) {
         return <span className="ch-status-checking">checking...</span>;
+      }
+      if (timedOutChannelIds.includes(channelId)) {
+        return <span className="ch-status-offline">timeout</span>;
       }
       if (!completedPollingChannelIds.includes(channelId)) {
         return <span className="ch-status-pending">pending...</span>;
@@ -348,12 +357,14 @@ export function App() {
   const sortedChannels = [...channels].sort((left, right) => {
     const leftChecking = currentPollingChannelIds.includes(left.id);
     const rightChecking = currentPollingChannelIds.includes(right.id);
+    const leftTimedOut = timedOutChannelIds.includes(left.id);
+    const rightTimedOut = timedOutChannelIds.includes(right.id);
     const leftCompleted = completedPollingChannelIds.includes(left.id);
     const rightCompleted = completedPollingChannelIds.includes(right.id);
 
     if (showRefreshStatuses) {
-      const leftRank = leftChecking ? 0 : leftCompleted ? 2 : 1;
-      const rightRank = rightChecking ? 0 : rightCompleted ? 2 : 1;
+      const leftRank = leftChecking ? 0 : leftCompleted || leftTimedOut ? 2 : 1;
+      const rightRank = rightChecking ? 0 : rightCompleted || rightTimedOut ? 2 : 1;
       if (leftRank !== rightRank) {
         return leftRank - rightRank;
       }
