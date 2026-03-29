@@ -15,11 +15,13 @@ import { LogService } from '../logging/log-service.js';
 import { PollRunRepository } from './poll-run-repository.js';
 import { SettingsService } from '../settings/settings-service.js';
 
+const POLL_CONCURRENCY = 5;
+
 export class PollingService {
   private timer: NodeJS.Timeout | null = null;
   private running = false;
   private currentTick: Promise<void> | null = null;
-  private currentChannel: string | null = null;
+  private currentChannels = new Set<string>();
   private completedChannels = new Set<string>();
   private onStateChanged: (() => void) | null = null;
   private hasCompletedInitialSweep = false;
@@ -56,7 +58,7 @@ export class PollingService {
   }
 
   currentChannelId(): string | null {
-    return this.currentChannel;
+    return this.currentChannels.values().next().value ?? null;
   }
 
   completedChannelIds(): string[] {
@@ -78,7 +80,7 @@ export class PollingService {
     }
 
     this.running = true;
-    this.currentChannel = null;
+    this.currentChannels.clear();
     this.completedChannels.clear();
     this.onStateChanged?.();
     this.currentTick = (async () => {
@@ -90,48 +92,16 @@ export class PollingService {
         const channelsToPoll = channels.filter(
           (channel) => force || this.shouldPoll(channel, this.hasCompletedInitialSweep)
         );
-        let activeCount = this.sessions.active().length;
-        for (const channel of channelsToPoll) {
-          this.currentChannel = channel.id;
-          this.onStateChanged?.();
-          const adapter = adapters[channel.platform];
-          try {
-            const status = await adapter.getChannelStatus(channel);
-            this.channelService.touchPoll(channel.id);
-            if (status.isLive) {
-              this.pollRuns.record(channel.id, 'live', status.title);
-              if (settings.autoOpenLives) {
-                const urls = status.allWatchUrls?.length
-                  ? status.allWatchUrls
-                  : [adapter.buildWatchUrl(channel, status)];
-                for (const url of urls) {
-                  await this.sessions.ensureSession(channel, url);
-                  activeCount += 1;
-                }
-                await this.sessions.closeStaleSessionsForChannel(channel.id, urls, settings.closeGracePeriodSeconds);
-              }
-            } else {
-              this.pollRuns.record(channel.id, 'offline');
-              await this.sessions.closeByChannelId(channel.id, settings.closeGracePeriodSeconds);
-            }
-          } catch (error) {
-            this.pollRuns.record(channel.id, 'error', error instanceof Error ? error.message : 'Unknown error');
-            this.logs.write('error', 'polling', 'Polling failed', {
-              channelId: channel.id,
-              error: error instanceof Error ? error.message : String(error)
-            });
-          } finally {
-            this.completedChannels.add(channel.id);
-            this.currentChannel = null;
-            this.onStateChanged?.();
-          }
-        }
+        const workerCount = Math.min(POLL_CONCURRENCY, channelsToPoll.length);
+        await Promise.all(
+          Array.from({ length: workerCount }, (_, index) => this.runPollingWorker(channelsToPoll, index, workerCount, settings))
+        );
         await this.sessions.checkPlaybackAndCloseEnded(settings.closeGracePeriodSeconds);
         this.hasCompletedInitialSweep = true;
         this.onStateChanged?.();
       } finally {
         this.running = false;
-        this.currentChannel = null;
+        this.currentChannels.clear();
         this.completedChannels.clear();
         this.currentTick = null;
         this.onStateChanged?.();
@@ -150,5 +120,49 @@ export class PollingService {
     }
     const elapsed = Date.now() - new Date(channel.lastPollAt).getTime();
     return elapsed >= PLATFORM_POLL_MINUTES[channel.platform] * 60_000;
+  }
+
+  private async runPollingWorker(
+    channelsToPoll: Channel[],
+    workerIndex: number,
+    workerCount: number,
+    settings: ReturnType<SettingsService['get']>
+  ): Promise<void> {
+    for (let index = workerIndex; index < channelsToPoll.length; index += workerCount) {
+      const channel = channelsToPoll[index];
+      this.currentChannels.add(channel.id);
+      this.onStateChanged?.();
+
+      const adapter = adapters[channel.platform];
+      try {
+        const status = await adapter.getChannelStatus(channel);
+        this.channelService.touchPoll(channel.id);
+        if (status.isLive) {
+          this.pollRuns.record(channel.id, 'live', status.title);
+          if (settings.autoOpenLives) {
+            const urls = status.allWatchUrls?.length
+              ? status.allWatchUrls
+              : [adapter.buildWatchUrl(channel, status)];
+            for (const url of urls) {
+              await this.sessions.ensureSession(channel, url);
+            }
+            await this.sessions.closeStaleSessionsForChannel(channel.id, urls, settings.closeGracePeriodSeconds);
+          }
+        } else {
+          this.pollRuns.record(channel.id, 'offline');
+          await this.sessions.closeByChannelId(channel.id, settings.closeGracePeriodSeconds);
+        }
+      } catch (error) {
+        this.pollRuns.record(channel.id, 'error', error instanceof Error ? error.message : 'Unknown error');
+        this.logs.write('error', 'polling', 'Polling failed', {
+          channelId: channel.id,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      } finally {
+        this.currentChannels.delete(channel.id);
+        this.completedChannels.add(channel.id);
+        this.onStateChanged?.();
+      }
+    }
   }
 }
