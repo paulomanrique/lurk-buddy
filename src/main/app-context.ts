@@ -187,6 +187,7 @@ export class AppContext {
       logs: this.logs.list(),
       pollingRunning: this.polling.isRunning(),
       pollingChannelId: this.polling.currentChannelId(),
+      currentPollingChannelIds: this.polling.currentChannelIds(),
       completedPollingChannelIds: this.polling.completedChannelIds(),
       shutdown: this.shutdownState
     }));

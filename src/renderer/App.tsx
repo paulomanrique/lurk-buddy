@@ -38,6 +38,7 @@ export function App() {
     updater,
     pollingRunning,
     pollingChannelId,
+    currentPollingChannelIds,
     completedPollingChannelIds,
     selectedSessionId,
     panelOnly,
@@ -324,7 +325,7 @@ export function App() {
 
   function renderChannelStatus(channelId: string) {
     if (showRefreshStatuses) {
-      if (pollingChannelId === channelId) {
+      if (currentPollingChannelIds.includes(channelId)) {
         return <span className="ch-status-checking">checking...</span>;
       }
       if (!completedPollingChannelIds.includes(channelId)) {
@@ -343,6 +344,25 @@ export function App() {
 
     return <span className="ch-status-offline">offline</span>;
   }
+
+  const sortedChannels = [...channels].sort((left, right) => {
+    const leftChecking = currentPollingChannelIds.includes(left.id);
+    const rightChecking = currentPollingChannelIds.includes(right.id);
+    const leftCompleted = completedPollingChannelIds.includes(left.id);
+    const rightCompleted = completedPollingChannelIds.includes(right.id);
+
+    if (showRefreshStatuses) {
+      const leftRank = leftChecking ? 0 : leftCompleted ? 2 : 1;
+      const rightRank = rightChecking ? 0 : rightCompleted ? 2 : 1;
+      if (leftRank !== rightRank) {
+        return leftRank - rightRank;
+      }
+    }
+
+    const leftLabel = (left.displayName || left.channelKey || left.url).toLocaleLowerCase();
+    const rightLabel = (right.displayName || right.channelKey || right.url).toLocaleLowerCase();
+    return leftLabel.localeCompare(rightLabel);
+  });
 
   return (
     <div className={`app-shell ${shuttingDown ? 'app-shell--closing' : ''}`}>
@@ -597,7 +617,7 @@ export function App() {
                 </div>
               ) : (
                 <div className="channels-body">
-                  {channels.map((channel) => (
+                  {sortedChannels.map((channel) => (
                     <div key={channel.id} className={`ch-row ${channel.enabled ? '' : 'disabled'}`}>
                       <PlatformBadge platform={channel.platform} size="icon" />
                       <div className="ch-name">{channel.displayName}</div>

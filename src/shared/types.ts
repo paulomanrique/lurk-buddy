@@ -128,6 +128,7 @@ export interface RendererSnapshot {
   logs: EventLog[];
   pollingRunning: boolean;
   pollingChannelId: string | null;
+  currentPollingChannelIds: string[];
   completedPollingChannelIds: string[];
   shutdown: ShutdownState;
 }

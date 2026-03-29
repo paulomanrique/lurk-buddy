@@ -10,6 +10,7 @@ interface AppState {
   initialized: boolean;
   pollingRunning: boolean;
   pollingChannelId: string | null;
+  currentPollingChannelIds: string[];
   completedPollingChannelIds: string[];
   selectedSessionId: string | null;
   panelOnly: boolean;
@@ -29,6 +30,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   initialized: false,
   pollingRunning: false,
   pollingChannelId: null,
+  currentPollingChannelIds: [],
   completedPollingChannelIds: [],
   selectedSessionId: null,
   panelOnly: false,
@@ -52,6 +54,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       initialized: true,
       pollingRunning: snapshot.pollingRunning,
       pollingChannelId: snapshot.pollingChannelId,
+      currentPollingChannelIds: snapshot.currentPollingChannelIds,
       completedPollingChannelIds: snapshot.completedPollingChannelIds,
       shutdown: snapshot.shutdown,
       selectedSessionId,

@@ -29,6 +29,7 @@ const snapshot = {
   logs: [],
   pollingRunning: false,
   pollingChannelId: null,
+  currentPollingChannelIds: [],
   completedPollingChannelIds: [],
   shutdown: {
     status: 'idle' as const,
@@ -88,6 +89,7 @@ describe('App shell', () => {
       initialized: false,
       pollingRunning: false,
       pollingChannelId: null,
+      currentPollingChannelIds: [],
       completedPollingChannelIds: [],
       shutdown: { status: 'idle', detail: null },
       selectedSessionId: null,

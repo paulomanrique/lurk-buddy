@@ -61,6 +61,10 @@ export class PollingService {
     return this.currentChannels.values().next().value ?? null;
   }
 
+  currentChannelIds(): string[] {
+    return [...this.currentChannels];
+  }
+
   completedChannelIds(): string[] {
     return [...this.completedChannels];
   }
@@ -89,9 +93,9 @@ export class PollingService {
       try {
         const settings = this.settings.get();
         const channels = this.channels.getEnabled();
-        const channelsToPoll = channels.filter(
-          (channel) => force || this.shouldPoll(channel, this.hasCompletedInitialSweep)
-        );
+        const channelsToPoll = channels
+          .filter((channel) => force || this.shouldPoll(channel, this.hasCompletedInitialSweep))
+          .sort((left, right) => this.compareChannelsAlphabetically(left, right));
         const workerCount = Math.min(POLL_CONCURRENCY, channelsToPoll.length);
         await Promise.all(
           Array.from({ length: workerCount }, (_, index) => this.runPollingWorker(channelsToPoll, index, workerCount, settings))
@@ -120,6 +124,12 @@ export class PollingService {
     }
     const elapsed = Date.now() - new Date(channel.lastPollAt).getTime();
     return elapsed >= PLATFORM_POLL_MINUTES[channel.platform] * 60_000;
+  }
+
+  private compareChannelsAlphabetically(left: Channel, right: Channel): number {
+    const leftLabel = (left.displayName || left.channelKey || left.url).toLocaleLowerCase();
+    const rightLabel = (right.displayName || right.channelKey || right.url).toLocaleLowerCase();
+    return leftLabel.localeCompare(rightLabel);
   }
 
   private async runPollingWorker(
