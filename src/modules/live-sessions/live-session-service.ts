@@ -261,6 +261,45 @@ export class LiveSessionService {
     }
   }
 
+  async prepareForAppShutdown(): Promise<void> {
+    this.activeSessionId = null;
+    this.liveBounds = null;
+
+    for (const [sessionId, liveView] of this.views) {
+      try {
+        this.hostWindow?.contentView.removeChildView(liveView.view);
+      } catch {}
+
+      const webContents = liveView.view.webContents;
+      try {
+        if (webContents.debugger.isAttached()) {
+          webContents.debugger.detach();
+        }
+      } catch {}
+
+      try {
+        if (!webContents.isDestroyed()) {
+          webContents.close({ waitForBeforeUnload: false });
+        }
+      } catch {}
+
+      this.mutedState.delete(sessionId);
+      this.lastReloadAt.delete(sessionId);
+    }
+
+    this.views.clear();
+
+    for (const sessionRow of this.repository.getActive()) {
+      this.updateSession({
+        ...sessionRow,
+        status: 'closed',
+        closedAt: nowIso(),
+        lastHeartbeatAt: nowIso(),
+        lastError: 'Session closed during app shutdown'
+      });
+    }
+  }
+
   private configureView(view: WebContentsView, channel: Channel, sessionId: string): void {
     view.webContents.setWindowOpenHandler(({ url }) => {
       const allowedHosts = PLATFORM_HOSTS[channel.platform];

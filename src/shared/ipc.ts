@@ -9,6 +9,7 @@ import type {
   LiveViewBounds,
   LiveSession,
   RendererSnapshot,
+  ShutdownState,
   TestChannelResult,
   UpdaterState,
   UpdateChannelInput
@@ -42,6 +43,7 @@ export interface LurkBuddyApi {
   app: {
     snapshot: () => Promise<RendererSnapshot>;
     updaterState: () => Promise<UpdaterState>;
+    shutdownState: () => Promise<ShutdownState>;
     onStateChanged: (callback: () => void) => () => void;
     runNow: () => Promise<void>;
     checkForUpdates: () => Promise<void>;
@@ -69,6 +71,7 @@ export const IPC_CHANNELS = {
   logsList: 'logs:list',
   appSnapshot: 'app:snapshot',
   appUpdaterState: 'app:updater-state',
+  appShutdownState: 'app:shutdown-state',
   appStateChanged: 'app:state-changed',
   appRunNow: 'app:run-now',
   appCheckForUpdates: 'app:check-for-updates',

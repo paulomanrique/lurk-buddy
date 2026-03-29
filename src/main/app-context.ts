@@ -1,11 +1,13 @@
 import type Database from 'better-sqlite3';
 import * as electron from 'electron';
 import type { BrowserWindow } from 'electron';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createDatabase, resolveDatabasePath } from '../db/database.js';
+import { PLATFORM_PARTITIONS } from '../shared/constants.js';
 import { IPC_CHANNELS } from '../shared/ipc.js';
 import { channelTransferListSchema, settingsPatchSchema } from '../shared/schemas.js';
+import type { ShutdownState } from '../shared/types.js';
 import { ChannelRepository } from '../modules/channels/channel-repository.js';
 import { ChannelService } from '../modules/channels/channel-service.js';
 import { LiveSessionRepository } from '../modules/live-sessions/live-session-repository.js';
@@ -19,6 +21,12 @@ import { UpdaterService } from './updater-service.js';
 
 const { app, dialog, ipcMain, shell } = electron;
 const preloadPath = join(__dirname, '../preload/index.js');
+const CACHE_DIRECTORIES = ['Cache', 'Code Cache', 'GPUCache', 'DawnGraphiteCache', 'DawnWebGPUCache'] as const;
+const SERVICE_WORKER_CACHE_DIRECTORIES = [join('Service Worker', 'CacheStorage'), join('Service Worker', 'ScriptCache')] as const;
+
+function wait(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 function mapChannelCreateError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
@@ -49,6 +57,8 @@ export class AppContext {
   readonly polling: PollingService;
   readonly updater: UpdaterService;
   readonly stateHub: StateHub;
+  private shutdownState: ShutdownState = { status: 'idle', detail: null };
+  private shutdownPromise: Promise<void> | null = null;
 
   constructor() {
     this.db = createDatabase();
@@ -177,9 +187,11 @@ export class AppContext {
       logs: this.logs.list(),
       pollingRunning: this.polling.isRunning(),
       pollingChannelId: this.polling.currentChannelId(),
-      completedPollingChannelIds: this.polling.completedChannelIds()
+      completedPollingChannelIds: this.polling.completedChannelIds(),
+      shutdown: this.shutdownState
     }));
     ipcMain.handle(IPC_CHANNELS.appUpdaterState, () => this.updater.getState());
+    ipcMain.handle(IPC_CHANNELS.appShutdownState, () => this.shutdownState);
 
     ipcMain.handle(IPC_CHANNELS.appRunNow, async () => {
       await this.polling.runNow();
@@ -197,5 +209,69 @@ export class AppContext {
     this.stateHub.on(() => {
       mainWindow.webContents.send(IPC_CHANNELS.appStateChanged);
     });
+  }
+
+  beginShutdown(): Promise<void> {
+    if (this.shutdownPromise) {
+      return this.shutdownPromise;
+    }
+
+    this.shutdownState = {
+      status: 'cleaning-cache',
+      detail: 'Cleaning cache before closing...'
+    };
+    this.stateHub.emit();
+
+    this.shutdownPromise = (async () => {
+      this.polling.stop();
+      await wait(140);
+      await this.sessions.prepareForAppShutdown();
+      await this.clearBrowserCaches();
+      this.logs.write('info', 'app', 'Finished cache cleanup during app shutdown');
+    })().catch((error) => {
+      this.logs.write('error', 'app', 'Cache cleanup failed during app shutdown', {
+        error: error instanceof Error ? error.message : String(error)
+      });
+    });
+
+    return this.shutdownPromise;
+  }
+
+  private async clearBrowserCaches(): Promise<void> {
+    const partitions = Object.values(PLATFORM_PARTITIONS).map((partition) => electron.session.fromPartition(partition));
+    const sessionsToClear = [electron.session.defaultSession, ...partitions];
+
+    await Promise.allSettled(
+      sessionsToClear.map(async (browserSession) => {
+        await browserSession.clearCache();
+      })
+    );
+
+    const userDataPath = app.getPath('userData');
+    const removalTargets = [
+      ...CACHE_DIRECTORIES.map((directory) => join(userDataPath, directory))
+    ];
+
+    const partitionsRoot = join(userDataPath, 'Partitions');
+    const partitionEntries = await readdir(partitionsRoot, { withFileTypes: true }).catch(() => []);
+    for (const entry of partitionEntries) {
+      if (!entry.isDirectory()) {
+        continue;
+      }
+
+      for (const directory of CACHE_DIRECTORIES) {
+        removalTargets.push(join(partitionsRoot, entry.name, directory));
+      }
+
+      for (const directory of SERVICE_WORKER_CACHE_DIRECTORIES) {
+        removalTargets.push(join(partitionsRoot, entry.name, directory));
+      }
+    }
+
+    await Promise.allSettled(
+      removalTargets.map(async (target) => {
+        await rm(target, { recursive: true, force: true, maxRetries: 3 });
+      })
+    );
   }
 }

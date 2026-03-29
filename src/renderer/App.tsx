@@ -42,6 +42,7 @@ export function App() {
     selectedSessionId,
     panelOnly,
     loading,
+    shutdown,
     hydrate,
     setSelectedSessionId,
     setPanelOnly
@@ -278,6 +279,7 @@ export function App() {
   const liveRecovering = sessions.some((session) => session.status === 'recovering');
   const showGlobalProgress = refreshing || pollingRunning;
   const showRefreshStatuses = refreshing || pollingRunning;
+  const shuttingDown = shutdown?.status === 'cleaning-cache';
   const updateActionBusy =
     checkingUpdates ||
     installingUpdate ||
@@ -343,7 +345,8 @@ export function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${shuttingDown ? 'app-shell--closing' : ''}`}>
+      <div className={`app-frame ${shuttingDown ? 'app-frame--blurred' : ''}`}>
       {showGlobalProgress && <div className="app-progress-bar" aria-hidden="true" />}
 
       {/* ── SESSIONS PANEL ── */}
@@ -650,6 +653,18 @@ export function App() {
       </main>
 
       {loading && <div className="loading-splash">booting_control_room...</div>}
+      </div>
+
+      {shuttingDown && (
+        <div className="shutdown-overlay" role="alert" aria-live="assertive" aria-busy="true">
+          <div className="shutdown-panel">
+            <span className="shutdown-label">system.shutdown</span>
+            <strong className="shutdown-title">Cleaning cache before closing</strong>
+            <span className="shutdown-detail">{shutdown?.detail ?? 'Removing temporary Chromium data from live sessions.'}</span>
+            <div className="shutdown-progress" aria-hidden="true" />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

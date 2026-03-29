@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { AppSettings, Channel, EventLog, LiveSession, UpdaterState } from '@shared/types';
+import type { AppSettings, Channel, EventLog, LiveSession, ShutdownState, UpdaterState } from '@shared/types';
 
 interface AppState {
   channels: Channel[];
@@ -14,6 +14,7 @@ interface AppState {
   selectedSessionId: string | null;
   panelOnly: boolean;
   loading: boolean;
+  shutdown: ShutdownState;
   hydrate: () => Promise<void>;
   setSelectedSessionId: (sessionId: string | null) => void;
   setPanelOnly: (value: boolean) => void;
@@ -32,6 +33,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   selectedSessionId: null,
   panelOnly: false,
   loading: true,
+  shutdown: { status: 'idle', detail: null },
   hydrate: async () => {
     if (!get().initialized) {
       set({ loading: true });
@@ -51,6 +53,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       pollingRunning: snapshot.pollingRunning,
       pollingChannelId: snapshot.pollingChannelId,
       completedPollingChannelIds: snapshot.completedPollingChannelIds,
+      shutdown: snapshot.shutdown,
       selectedSessionId,
       loading: false
     });

@@ -29,7 +29,11 @@ const snapshot = {
   logs: [],
   pollingRunning: false,
   pollingChannelId: null,
-  completedPollingChannelIds: []
+  completedPollingChannelIds: [],
+  shutdown: {
+    status: 'idle' as const,
+    detail: null
+  }
 };
 
 const lurkBuddy = {
@@ -60,6 +64,7 @@ const lurkBuddy = {
   app: {
     snapshot: vi.fn(),
     updaterState: vi.fn(),
+    shutdownState: vi.fn(),
     onStateChanged: vi.fn(() => vi.fn()),
     runNow: vi.fn(),
     checkForUpdates: vi.fn(),
@@ -84,6 +89,7 @@ describe('App shell', () => {
       pollingRunning: false,
       pollingChannelId: null,
       completedPollingChannelIds: [],
+      shutdown: { status: 'idle', detail: null },
       selectedSessionId: null,
       panelOnly: false,
       loading: true

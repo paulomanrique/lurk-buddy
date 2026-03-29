@@ -129,6 +129,7 @@ export interface RendererSnapshot {
   pollingRunning: boolean;
   pollingChannelId: string | null;
   completedPollingChannelIds: string[];
+  shutdown: ShutdownState;
 }
 
 export interface TestChannelResult {
@@ -141,4 +142,11 @@ export interface LiveViewBounds {
   y: number;
   width: number;
   height: number;
+}
+
+export type ShutdownStatus = 'idle' | 'cleaning-cache';
+
+export interface ShutdownState {
+  status: ShutdownStatus;
+  detail: string | null;
 }

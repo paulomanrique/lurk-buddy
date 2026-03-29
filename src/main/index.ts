@@ -9,6 +9,7 @@ const { app, BrowserWindow, nativeImage } = electron;
 const mainPreloadPath = join(__dirname, '../preload/index.js');
 let mainWindow: ElectronBrowserWindow | null = null;
 let appContext: AppContext | null = null;
+let shutdownInFlight = false;
 
 function resolveWindowIconPath(): string | null {
   const candidates = app.isPackaged
@@ -59,6 +60,21 @@ function createWindow(): ElectronBrowserWindow {
   } else {
     void window.loadFile(resolveRendererEntryPath());
   }
+
+  window.on('close', (event) => {
+    if (!appContext || shutdownInFlight) {
+      return;
+    }
+
+    event.preventDefault();
+    shutdownInFlight = true;
+    void appContext.beginShutdown().finally(() => {
+      if (!window.isDestroyed()) {
+        window.destroy();
+      }
+    });
+  });
+
   return window;
 }
 

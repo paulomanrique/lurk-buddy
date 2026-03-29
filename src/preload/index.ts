@@ -116,6 +116,7 @@ const api: LurkBuddyApi = {
   app: {
     snapshot: () => ipcRenderer.invoke(IPC_CHANNELS.appSnapshot),
     updaterState: () => ipcRenderer.invoke(IPC_CHANNELS.appUpdaterState),
+    shutdownState: () => ipcRenderer.invoke(IPC_CHANNELS.appShutdownState),
     onStateChanged: (callback) => {
       const listener = () => callback();
       ipcRenderer.on(IPC_CHANNELS.appStateChanged, listener);
