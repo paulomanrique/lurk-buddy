@@ -206,8 +206,15 @@ export class AppContext {
       await shell.openExternal(this.updater.getState().releaseUrl);
     });
 
-    this.stateHub.on(() => {
+    const unsubscribeStateHub = this.stateHub.on(() => {
+      if (mainWindow.isDestroyed() || mainWindow.webContents.isDestroyed()) {
+        return;
+      }
       mainWindow.webContents.send(IPC_CHANNELS.appStateChanged);
+    });
+
+    mainWindow.once('closed', () => {
+      unsubscribeStateHub();
     });
   }
 
