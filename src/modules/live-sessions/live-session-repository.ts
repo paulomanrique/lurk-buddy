@@ -43,6 +43,11 @@ export class LiveSessionRepository {
     return row ? hydrate(row) : null;
   }
 
+  getById(sessionId: string): LiveSession | null {
+    const row = this.db.prepare('SELECT * FROM live_sessions WHERE id = ?').get(sessionId) as Record<string, unknown> | undefined;
+    return row ? hydrate(row) : null;
+  }
+
   getAllActiveByChannelId(channelId: string): LiveSession[] {
     return this.db
       .prepare(

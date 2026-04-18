@@ -117,21 +117,17 @@ export class LiveSessionService {
     this.mutedState.set(liveSession.id, true);
     this.configureView(view, channel, liveSession.id);
     this.applyMutedState(liveSession.id);
-    await viewSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
-    await view.webContents.loadURL(streamUrl);
-    this.applyMutedState(liveSession.id);
-    await this.ensureDebuggerAttached(liveSession.id);
-    adapters[channel.platform].attachSessionObservers(view.webContents);
-    this.updateSession({ ...liveSession, status: 'live', lastHeartbeatAt: nowIso() });
     if (!this.activeSessionId || !this.views.has(this.activeSessionId)) {
       this.activeSessionId = liveSession.id;
     }
-    await this.syncViewVisibility();
+    void this.syncViewVisibility();
+    viewSession.setPermissionRequestHandler((_wc, _permission, callback) => callback(false));
+    void this.finishOpeningSession(liveSession, channel, view);
     this.logs.write('info', 'live-sessions', 'Opened live tab', {
       channelId: channel.id,
       sessionId: liveSession.id
     });
-    return this.repository.getByChannelId(channel.id) ?? liveSession;
+    return liveSession;
   }
 
   async activate(sessionId: string): Promise<void> {
@@ -391,6 +387,60 @@ export class LiveSessionService {
     const updated = this.repository.update(session);
     this.onStateChanged?.();
     return updated;
+  }
+
+  private async finishOpeningSession(liveSession: LiveSession, channel: Channel, view: WebContentsView): Promise<void> {
+    try {
+      await view.webContents.loadURL(liveSession.streamUrl);
+      if (!this.views.has(liveSession.id) || view.webContents.isDestroyed()) {
+        return;
+      }
+      const current = this.repository.getById(liveSession.id);
+      if (!current || current.status !== 'opening') {
+        return;
+      }
+      this.applyMutedState(liveSession.id);
+      await this.ensureDebuggerAttached(liveSession.id);
+      if (!this.views.has(liveSession.id) || view.webContents.isDestroyed()) {
+        return;
+      }
+      adapters[channel.platform].attachSessionObservers(view.webContents);
+      this.updateSession({ ...current, status: 'live', lastHeartbeatAt: nowIso(), lastError: null });
+    } catch (error) {
+      this.failOpeningSession(liveSession.id, error);
+    }
+  }
+
+  private failOpeningSession(sessionId: string, error: unknown): void {
+    const sessionRow = this.repository.getById(sessionId);
+    if (!sessionRow || sessionRow.status !== 'opening') {
+      return;
+    }
+    const liveView = this.views.get(sessionId);
+    if (liveView) {
+      try {
+        this.hostWindow?.contentView.removeChildView(liveView.view);
+      } catch {}
+      if (!liveView.view.webContents.isDestroyed()) {
+        liveView.view.webContents.close();
+      }
+      this.views.delete(sessionId);
+      this.mutedState.delete(sessionId);
+      this.lastReloadAt.delete(sessionId);
+    }
+    this.updateSession({
+      ...sessionRow,
+      status: 'error',
+      closedAt: nowIso(),
+      lastHeartbeatAt: nowIso(),
+      lastError: error instanceof Error ? error.message : String(error)
+    });
+    if (this.activeSessionId === sessionId) {
+      this.activeSessionId = this.active()[0]?.id ?? null;
+      void this.syncViewVisibility();
+    } else {
+      void this.applyNetworkPolicies();
+    }
   }
 
   private async reloadSessionAfterPlaybackError(sessionId: string, errorMessage: string): Promise<void> {
