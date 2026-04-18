@@ -34,6 +34,7 @@ export class PollingService {
   private retryAttempts = new Map<string, number>();
   private timedOutChannels = new Set<string>();
   private completedChannels = new Set<string>();
+  private sessionMaintenance: Promise<void> | null = null;
   private onStateChanged: (() => void) | null = null;
   private hasCompletedInitialSweep = false;
   private forcePollOnNextTick = false;
@@ -121,8 +122,8 @@ export class PollingService {
         await Promise.all(
           Array.from({ length: workerCount }, (_, index) => this.runPollingWorker(channelsToPoll, index, workerCount, settings))
         );
-        await this.sessions.checkPlaybackAndCloseEnded(settings.closeGracePeriodSeconds);
         this.hasCompletedInitialSweep = true;
+        this.runSessionMaintenance(settings.closeGracePeriodSeconds);
         this.onStateChanged?.();
       } finally {
         this.running = false;
@@ -136,6 +137,23 @@ export class PollingService {
     })();
 
     await this.currentTick;
+  }
+
+  private runSessionMaintenance(closeGracePeriodSeconds: number): void {
+    if (this.sessionMaintenance) {
+      return;
+    }
+
+    this.sessionMaintenance = this.sessions
+      .checkPlaybackAndCloseEnded(closeGracePeriodSeconds)
+      .catch((error) => {
+        this.logs.write('error', 'polling', 'Session maintenance failed', {
+          error: error instanceof Error ? error.message : String(error)
+        });
+      })
+      .finally(() => {
+        this.sessionMaintenance = null;
+      });
   }
 
   private shouldPoll(channel: Channel, hasCompletedInitialSweep: boolean): boolean {
