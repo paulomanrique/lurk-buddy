@@ -65,7 +65,7 @@ export abstract class BasePlatformAdapter implements PlatformAdapter {
           pageClaimsVisible: document.visibilityState === 'visible' && document.hidden === false,
           siteMuted: media ? media.muted : null,
           containerMuted: false,
-          ended: media ? (media.ended || media.readyState === 0) : false,
+          ended: media ? media.ended : false,
           errorMessage
         };
       })();
