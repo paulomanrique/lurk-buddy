@@ -6,7 +6,8 @@
   "license": "Unlicense",
   "main": "dist/main/index.js",
   "scripts": {
-    "postinstall": "npm run rebuild:native",
+    "postinstall": "npm run install:electron && npm run rebuild:native",
+    "install:electron": "node node_modules/electron/install.js",
     "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:electron\"",
     "dev:renderer": "vite",
     "dev:main": "tsc -p tsconfig.main.json --watch",
