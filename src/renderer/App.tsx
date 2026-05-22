@@ -3,6 +3,7 @@ import type { AppSettings, Channel } from '@shared/types';
 import { APP_NAME, POLL_TICK_MS } from '@shared/constants';
 import { trackEvent, trackScreenView } from './analytics';
 import { EmptyState, PlatformBadge } from './components';
+import { LogsView } from './LogsView';
 import { useAppStore } from './store';
 import logoCircleUrl from './assets/logo-circle.svg';
 
@@ -58,6 +59,7 @@ export function App() {
   const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [installingUpdate, setInstallingUpdate] = useState(false);
   const [manualRefreshActive, setManualRefreshActive] = useState(false);
+  const [logsOpen, setLogsOpen] = useState(false);
   const refreshingRef = useRef(false);
   const liveCanvasRef = useRef<HTMLDivElement | null>(null);
   const { seconds: pollCountdown, reset: resetPollCountdown } = usePollCountdown();
@@ -545,6 +547,15 @@ export function App() {
             </div>
             <button
               className="ghost-btn"
+              onClick={() => {
+                trackEvent('logs_view_opened');
+                setLogsOpen(true);
+              }}
+            >
+              [logs]
+            </button>
+            <button
+              className="ghost-btn"
               disabled={showGlobalProgress}
               onClick={() => void handleRefresh()}
             >
@@ -552,6 +563,7 @@ export function App() {
             </button>
           </div>
         </div>
+        {logsOpen && <LogsView onClose={() => setLogsOpen(false)} />}
 
         {/* Body */}
         {showDashboard ? (
