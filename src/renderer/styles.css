@@ -846,6 +846,7 @@ input[type='checkbox'] { accent-color: var(--brand); }
 .badge-icon-twitch { color: #9b77d4; }
 .badge-icon-youtube { color: #ff7070; }
 .badge-icon-kick { color: #4cd68a; }
+.badge-icon-tiktok { color: #25f4ee; }
 
 /* ── PLATFORM BADGE ──────────────────────────────── */
 
@@ -883,6 +884,12 @@ input[type='checkbox'] { accent-color: var(--brand); }
   border: 1px solid rgba(38, 166, 91, 0.25);
 }
 
+.badge-tiktok {
+  background: rgba(37, 244, 238, 0.1);
+  color: #25f4ee;
+  border: 1px solid rgba(254, 44, 85, 0.3);
+}
+
 /* ── SESSION BADGE (smaller, no border) ─────────── */
 
 .session-badge {
@@ -909,6 +916,12 @@ input[type='checkbox'] { accent-color: var(--brand); }
 .session-badge.badge-kick {
   background: rgba(38, 166, 91, 0.18);
   color: #4cd68a;
+  border: none;
+}
+
+.session-badge.badge-tiktok {
+  background: rgba(37, 244, 238, 0.18);
+  color: #25f4ee;
   border: none;
 }
 

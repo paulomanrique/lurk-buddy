@@ -6,6 +6,7 @@ const PLATFORM_POLL_MINUTES: Record<Platform, number> = {
   twitch: 5,
   kick: 5,
   youtube: 10,
+  tiktok: 5,
 };
 import { adapters } from '../../platforms/index.js';
 import { ChannelService } from '../channels/channel-service.js';

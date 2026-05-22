@@ -174,6 +174,9 @@ export class ChannelService {
 
   private detectPlatform(value: string): Channel['platform'] {
     const normalized = value.trim().toLowerCase();
+    if (normalized.includes('tiktok.com')) {
+      return 'tiktok';
+    }
     if (normalized.includes('youtube.com') || normalized.includes('youtu.be') || normalized.startsWith('@')) {
       return 'youtube';
     }

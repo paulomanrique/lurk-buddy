@@ -25,13 +25,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
 export const PLATFORM_PARTITIONS: Record<Platform, string> = {
   twitch: 'persist:twitch',
   youtube: 'persist:youtube',
-  kick: 'persist:kick'
+  kick: 'persist:kick',
+  tiktok: 'persist:tiktok'
 };
 
 export const PLATFORM_HOSTS: Record<Platform, string[]> = {
   twitch: ['www.twitch.tv', 'twitch.tv', 'player.twitch.tv'],
   youtube: ['www.youtube.com', 'youtube.com', 'm.youtube.com'],
-  kick: ['kick.com', 'www.kick.com']
+  kick: ['kick.com', 'www.kick.com'],
+  tiktok: ['www.tiktok.com', 'tiktok.com', 'm.tiktok.com', 'webcast.tiktok.com']
 };
 
 export const POLL_TICK_MS = 60_000;

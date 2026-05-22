@@ -3,9 +3,11 @@ import type { PlatformAdapter } from './base.js';
 import { TwitchAdapter } from './twitch/adapter.js';
 import { YouTubeAdapter } from './youtube/adapter.js';
 import { KickAdapter } from './kick/adapter.js';
+import { TikTokAdapter } from './tiktok/adapter.js';
 
 export const adapters: Record<Platform, PlatformAdapter> = {
   twitch: new TwitchAdapter(),
   youtube: new YouTubeAdapter(),
-  kick: new KickAdapter()
+  kick: new KickAdapter(),
+  tiktok: new TikTokAdapter()
 };

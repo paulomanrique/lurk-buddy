@@ -1,4 +1,4 @@
-export type Platform = 'twitch' | 'youtube' | 'kick';
+export type Platform = 'twitch' | 'youtube' | 'kick' | 'tiktok';
 
 export type SessionStatus = 'opening' | 'live' | 'ending' | 'closed' | 'error' | 'queued' | 'recovering';
 
