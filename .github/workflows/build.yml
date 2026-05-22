@@ -99,13 +99,9 @@ jobs:
       - name: Create .env with secrets
         shell: bash
         run: |
-          echo "TWITCH_CLIENT_ID=$TWITCH_CLIENT_ID" >> .env
-          echo "TWITCH_CLIENT_SECRET=$TWITCH_CLIENT_SECRET" >> .env
           echo "KICK_CLIENT_ID=$KICK_CLIENT_ID" >> .env
           echo "KICK_CLIENT_SECRET=$KICK_CLIENT_SECRET" >> .env
         env:
-          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
-          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
           KICK_CLIENT_ID: ${{ secrets.KICK_CLIENT_ID }}
           KICK_CLIENT_SECRET: ${{ secrets.KICK_CLIENT_SECRET }}
 

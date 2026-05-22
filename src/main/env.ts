@@ -17,15 +17,11 @@ function resolveEnvPath(): string | undefined {
 config({ path: resolveEnvPath() });
 
 export interface RuntimeEnv {
-  twitchClientId: string;
-  twitchClientSecret: string;
   kickClientId: string;
   kickClientSecret: string;
 }
 
 export const runtimeEnv: RuntimeEnv = {
-  twitchClientId: process.env.TWITCH_CLIENT_ID ?? '',
-  twitchClientSecret: process.env.TWITCH_CLIENT_SECRET ?? '',
   kickClientId: process.env.KICK_CLIENT_ID ?? '',
   kickClientSecret: process.env.KICK_CLIENT_SECRET ?? ''
 };

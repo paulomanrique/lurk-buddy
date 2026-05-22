@@ -1,11 +1,4 @@
-import { runtimeEnv } from '../../main/env.js';
-
-interface TwitchToken {
-  accessToken: string;
-  expiresAt: number;
-}
-
-let cachedToken: TwitchToken | null = null;
+const WEB_CLIENT_ID = 'kimne78kx3ncx6brgo4mv6wki5h1ko';
 
 export interface TwitchStreamResponse {
   data: Array<{
@@ -19,63 +12,61 @@ export interface TwitchStreamResponse {
   }>;
 }
 
-export async function getTwitchLiveStream(channelKey: string): Promise<TwitchStreamResponse['data'][number] | null> {
-  if (!runtimeEnv.twitchClientId) {
-    return null;
-  }
+type TwitchStream = TwitchStreamResponse['data'][number];
 
-  const token = await getTwitchAccessToken();
-  if (!token) {
-    return null;
-  }
-
-  const response = await fetch(
-    `https://api.twitch.tv/helix/streams?user_login=${encodeURIComponent(channelKey)}`,
-    {
-      headers: {
-        'Client-Id': runtimeEnv.twitchClientId,
-        Authorization: `Bearer ${token}`
-      }
-    }
-  );
-
-  if (!response.ok) {
-    throw new Error(`Twitch streams API failed with ${response.status}`);
-  }
-
-  const payload = (await response.json()) as TwitchStreamResponse;
-  return payload.data.find((stream) => stream.type === 'live') ?? null;
-}
-
-async function getTwitchAccessToken(): Promise<string | null> {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 60_000) {
-    return cachedToken.accessToken;
-  }
-
-  if (!runtimeEnv.twitchClientId || !runtimeEnv.twitchClientSecret) {
-    return null;
-  }
-
-  const response = await fetch('https://id.twitch.tv/oauth2/token', {
+export async function getTwitchLiveStream(channelKey: string): Promise<TwitchStream | null> {
+  const response = await fetch('https://gql.twitch.tv/gql', {
     method: 'POST',
     headers: {
-      'content-type': 'application/x-www-form-urlencoded'
+      'Client-Id': WEB_CLIENT_ID,
+      'content-type': 'application/json'
     },
-    body: new URLSearchParams({
-      client_id: runtimeEnv.twitchClientId,
-      client_secret: runtimeEnv.twitchClientSecret,
-      grant_type: 'client_credentials'
+    body: JSON.stringify({
+      query:
+        'query($login: String!) { user(login: $login) { id login displayName stream { id title type viewersCount game { name } } } }',
+      variables: { login: channelKey }
     })
   });
 
   if (!response.ok) {
-    throw new Error(`Twitch auth failed with ${response.status}`);
+    throw new Error(`Twitch GQL failed with ${response.status}`);
   }
 
-  const payload = (await response.json()) as { access_token: string; expires_in: number };
-  cachedToken = {
-    accessToken: payload.access_token,
-    expiresAt: Date.now() + payload.expires_in * 1000
+  const payload = (await response.json()) as {
+    data?: {
+      user?: {
+        id?: string;
+        login?: string;
+        displayName?: string;
+        stream?: {
+          id: string;
+          title: string;
+          type: string;
+          viewersCount: number;
+          game?: { name?: string } | null;
+        } | null;
+      } | null;
+    };
+    errors?: Array<{ message: string }>;
   };
-  return cachedToken.accessToken;
+
+  if (payload.errors?.length) {
+    throw new Error(`Twitch GQL errors: ${payload.errors.map((e) => e.message).join('; ')}`);
+  }
+
+  const user = payload.data?.user;
+  const stream = user?.stream;
+  if (!stream || stream.type !== 'live') {
+    return null;
+  }
+
+  return {
+    id: stream.id,
+    user_login: user?.login ?? channelKey,
+    user_name: user?.displayName ?? channelKey,
+    game_name: stream.game?.name ?? '',
+    type: stream.type,
+    title: stream.title,
+    viewer_count: stream.viewersCount
+  };
 }
