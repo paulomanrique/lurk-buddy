@@ -13,7 +13,32 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  create-release:
+    # electron-builder's GitHub publisher races to createRelease across the
+    # matrix and has no locking, so two matrix jobs can both believe the
+    # release doesn't exist and create separate drafts. Pre-create the draft
+    # here so every matrix job finds an existing release and just uploads.
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create draft release with notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; updating notes."
+            gh release edit "$TAG" --notes-file release-notes.md
+          else
+            gh release create "$TAG" --draft --title "${TAG#v}" --notes-file release-notes.md
+          fi
+
   build:
+    needs: create-release
+    if: ${{ always() && (needs.create-release.result == 'success' || needs.create-release.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
@@ -157,11 +182,14 @@ jobs:
         with:
           name: lurk-buddy-${{ matrix.platform }}-${{ matrix.arch }}
           path: ${{ matrix.artifact_glob }}
+          if-no-files-found: ignore
+          retention-days: 30
 
   release-notes:
-    # electron-builder leaves the GitHub release body empty when multiple
-    # matrix jobs publish to the same draft. Update it once, after the matrix
-    # is done, from the in-repo release-notes.md.
+    # electron-builder's GitHub publisher only sets tag/name/draft/prerelease
+    # on createRelease, and parallel matrix jobs race to create the draft —
+    # which is how v0.0.7 ended up with two empty drafts. Update the body
+    # once, after the matrix is done, from the in-repo release-notes.md.
     needs: build
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
@@ -175,5 +203,3 @@ jobs:
         run: |
           TAG=${GITHUB_REF#refs/tags/}
           gh release edit "$TAG" --notes-file release-notes.md
-          if-no-files-found: ignore
-          retention-days: 30
