@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ChannelService } from '../../src/modules/channels/channel-service';
 
 describe('ChannelService', () => {
-  it('rejects duplicate tracked channels before hitting sqlite', () => {
+  it('rejects duplicate tracked channels before hitting sqlite', async () => {
     const repository = {
       list: vi.fn(() => []),
       getByPlatformAndChannelKey: vi.fn(() => ({
@@ -21,7 +21,7 @@ describe('ChannelService', () => {
     const logs = { write: vi.fn() };
     const service = new ChannelService(repository as never, logs as never);
 
-    expect(() => service.create({ value: 'https://twitch.tv/some_channel' })).toThrow(
+    await expect(service.create({ value: 'https://twitch.tv/some_channel' })).rejects.toThrow(
       'This channel is already being tracked.'
     );
     expect(repository.save).not.toHaveBeenCalled();

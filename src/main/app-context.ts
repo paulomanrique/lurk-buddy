@@ -86,9 +86,9 @@ export class AppContext {
 
   registerIpc(mainWindow: BrowserWindow): void {
     ipcMain.handle(IPC_CHANNELS.channelsList, () => this.channels.list());
-    ipcMain.handle(IPC_CHANNELS.channelsCreate, (_event, input) => {
+    ipcMain.handle(IPC_CHANNELS.channelsCreate, async (_event, input) => {
       try {
-        const result = this.channelService.create(input);
+        const result = await this.channelService.create(input);
         this.stateHub.emit();
         return result;
       } catch (error) {
@@ -149,7 +149,7 @@ export class AppContext {
       const filePath = result.filePaths[0];
       const raw = await readFile(filePath, 'utf8');
       const parsed = channelTransferListSchema.parse(JSON.parse(raw));
-      const summary = this.channelService.importItems(parsed);
+      const summary = await this.channelService.importItems(parsed);
       this.stateHub.emit();
       return { path: filePath, ...summary };
     });

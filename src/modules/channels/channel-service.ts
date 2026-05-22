@@ -9,6 +9,7 @@ import type {
 import { channelTransferListSchema, createChannelSchema, updateChannelSchema } from '../../shared/schemas.js';
 import { makeId, nowIso } from '../../shared/utils.js';
 import { adapters } from '../../platforms/index.js';
+import { resolveYouTubeHandleFromChannelId } from '../platform-api/youtube-api.js';
 import { ChannelRepository } from './channel-repository.js';
 import { LogService } from '../logging/log-service.js';
 
@@ -31,8 +32,8 @@ export class ChannelService {
     }));
   }
 
-  create(input: CreateChannelInput): Channel {
-    const { parsed, platform, normalized } = this.normalizeCreateInput(input);
+  async create(input: CreateChannelInput): Promise<Channel> {
+    const { parsed, platform, normalized } = await this.normalizeCreateInput(input);
     const existing = this.repository.getByPlatformAndChannelKey(platform, normalized.channelKey);
     if (existing) {
       throw new Error('This channel is already being tracked.');
@@ -56,7 +57,7 @@ export class ChannelService {
     return saved;
   }
 
-  importItems(entries: unknown): Omit<ImportChannelsResult, 'path'> {
+  async importItems(entries: unknown): Promise<Omit<ImportChannelsResult, 'path'>> {
     const parsedEntries = channelTransferListSchema.parse(entries);
     const known = new Set(
       this.repository
@@ -68,14 +69,14 @@ export class ChannelService {
     let skipped = 0;
 
     for (const entry of parsedEntries) {
-      const { platform, normalized } = this.normalizeCreateInput(entry);
+      const { platform, normalized } = await this.normalizeCreateInput(entry);
       const dedupeKey = `${platform}:${normalized.channelKey.toLowerCase()}`;
       if (known.has(dedupeKey)) {
         skipped += 1;
         continue;
       }
 
-      const created = this.create(entry);
+      const created = await this.create(entry);
       known.add(dedupeKey);
 
       if (entry.enabled === false) {
@@ -148,15 +149,26 @@ export class ChannelService {
     return channel;
   }
 
-  private normalizeCreateInput(input: CreateChannelInput | ChannelTransferItem): {
+  private async normalizeCreateInput(input: CreateChannelInput | ChannelTransferItem): Promise<{
     parsed: CreateChannelInput;
     platform: Channel['platform'];
     normalized: ReturnType<(typeof adapters)[Channel['platform']]['normalizeInput']>;
-  } {
+  }> {
     const parsed = createChannelSchema.parse(input);
     const platform = parsed.platform ?? this.detectPlatform(parsed.value);
     const adapter = adapters[platform];
-    const normalized = adapter.normalizeInput(parsed.value);
+    let normalized = adapter.normalizeInput(parsed.value);
+
+    if (platform === 'youtube') {
+      const stripped = normalized.channelKey.replace(/^@/, '');
+      if (/^UC[A-Za-z0-9_-]{22}$/.test(stripped)) {
+        const handle = await resolveYouTubeHandleFromChannelId(stripped);
+        if (handle) {
+          normalized = adapter.normalizeInput(handle);
+        }
+      }
+    }
+
     return { parsed, platform, normalized };
   }
 
