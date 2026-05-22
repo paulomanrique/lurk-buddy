@@ -157,5 +157,23 @@ jobs:
         with:
           name: lurk-buddy-${{ matrix.platform }}-${{ matrix.arch }}
           path: ${{ matrix.artifact_glob }}
+
+  release-notes:
+    # electron-builder leaves the GitHub release body empty when multiple
+    # matrix jobs publish to the same draft. Update it once, after the matrix
+    # is done, from the in-repo release-notes.md.
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set release body from release-notes.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          gh release edit "$TAG" --notes-file release-notes.md
           if-no-files-found: ignore
           retention-days: 30
