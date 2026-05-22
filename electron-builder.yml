@@ -25,6 +25,9 @@ publish:
   repo: lurk-buddy
   releaseType: draft
 
+releaseInfo:
+  releaseNotesFile: release-notes.md
+
 mac:
   icon: build/icon.icns
   category: public.app-category.utilities
