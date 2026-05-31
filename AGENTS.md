@@ -50,7 +50,7 @@
 ## Electron Runtime Notes
 
 - The environment may export `ELECTRON_RUN_AS_NODE=1`. This breaks the app boot by forcing Electron into Node mode.
-- `package.json` scripts explicitly clear `ELECTRON_RUN_AS_NODE` for `dev` and `start`.
+- `dev` and `start` launch Electron via `scripts/run-electron.mjs`, which `delete`s `ELECTRON_RUN_AS_NODE` from the spawned env. `cross-env VAR=` cannot actually unset a variable — it sets it to empty string, which Electron still treats as "run as node".
 - `better-sqlite3` must be rebuilt against Electron’s ABI. `postinstall` runs `npm run rebuild:native` for that reason.
 - Vite is pinned to `127.0.0.1:5173` with `strictPort: true` because the Electron dev script waits on that exact address.
 
@@ -78,6 +78,13 @@
   - `npm run build`
   - `npm run test`
 - If a change affects Electron startup or native modules, validate `npm run dev` as well.
+
+## Release Rules
+
+- Every release must keep the public site (`docs/index.html`) in sync with the latest version.
+- `docs/index.html` is the GitHub Pages site (served from `master` → `/docs`). Its download links and version badges embed the version (e.g. `v0.0.7`) because the artifact names from `electron-builder.yml` include `${version}`.
+- The `.github/workflows/update-site.yml` workflow updates those links/badges automatically when a release is published. After publishing a release, confirm that workflow ran green (`gh run list --workflow=update-site.yml`) and that `docs/index.html` actually points at the new tag.
+- If the workflow ever fails, manually bump every version reference in `docs/index.html` to the new tag and push, otherwise the site keeps advertising the previous version.
 
 ## Git Workflow Rules
 

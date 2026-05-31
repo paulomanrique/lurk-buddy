@@ -17,7 +17,7 @@ jobs:
         with:
           ref: master
 
-      - name: Update download links in site/index.html
+      - name: Update download links in docs/index.html
         env:
           TAG: ${{ github.event.release.tag_name }}
         run: |
@@ -37,7 +37,7 @@ jobs:
             "dl-linux-arm64": f"{base}/Lurk-Buddy-{version}-arm64.AppImage",
           }
 
-          path = "site/index.html"
+          path = "docs/index.html"
           html = open(path).read()
 
           # Replace each href by id
@@ -55,15 +55,22 @@ jobs:
             html
           )
 
+          # Update hero badge (vX.X.X · open source · free forever)
+          html = re.sub(
+            r'v[\d.]+( · open source)',
+            rf'{tag}\g<1>',
+            html
+          )
+
           open(path, "w").write(html)
-          print(f"Updated site/index.html to {tag}")
+          print(f"Updated docs/index.html to {tag}")
           EOF
 
       - name: Commit and push
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add site/index.html
+          git add docs/index.html
           git diff --cached --quiet && echo "No changes" && exit 0
           git commit -m "chore: update site download links to ${{ github.event.release.tag_name }}"
           git push
