@@ -55,6 +55,7 @@ export function App() {
   const [form, setForm] = useState(initialForm);
   const [createError, setCreateError] = useState<string | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [checkingUpdates, setCheckingUpdates] = useState(false);
   const [installingUpdate, setInstallingUpdate] = useState(false);
@@ -168,6 +169,31 @@ export function App() {
     });
     if (selectedSessionId === sessionId) setPanelOnly(true);
     await hydrate();
+  }
+
+  async function handleReloadSession(sessionId: string) {
+    const session = sessions.find((entry) => entry.id === sessionId);
+    trackEvent('live_session_reloaded', {
+      platform: session?.platform
+    });
+    await window.lurkBuddy.lives.reload(sessionId);
+  }
+
+  async function handleOpenChannel(channelId: string) {
+    setOpeningId(channelId);
+    try {
+      const channel = channels.find((entry) => entry.id === channelId);
+      const session = await window.lurkBuddy.lives.open(channelId);
+      trackEvent('live_session_opened_manually', {
+        platform: channel?.platform
+      });
+      await hydrate();
+      if (session) {
+        await handleSelectSession(session.id);
+      }
+    } finally {
+      setOpeningId(null);
+    }
   }
 
   async function handleSelectSession(sessionId: string) {
@@ -436,6 +462,19 @@ export function App() {
                         )}
                       </button>
                       <button
+                        className="session-refresh"
+                        title="Refresh"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void handleReloadSession(session.id);
+                        }}
+                      >
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                          <path d="M4 4v6h6M20 20v-6h-6" />
+                          <path d="M20 9a8 8 0 00-14.32-3.36L4 7m0 8a8 8 0 0014.32 3.36L20 17" />
+                        </svg>
+                      </button>
+                      <button
                         className="session-close"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -662,6 +701,13 @@ export function App() {
                       <div className="ch-actions-right">
                         <div className="ch-status">{renderChannelStatus(channel.id)}</div>
                         <div className="ch-actions">
+                          <button
+                            className="action-btn"
+                            disabled={openingId === channel.id}
+                            onClick={() => void handleOpenChannel(channel.id)}
+                          >
+                            {openingId === channel.id ? '[...]' : '[open]'}
+                          </button>
                           <button
                             className="action-btn"
                             disabled={testingId === channel.id}

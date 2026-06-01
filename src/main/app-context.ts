@@ -178,6 +178,19 @@ export class AppContext {
       await this.sessions.close(sessionId);
       this.stateHub.emit();
     });
+    ipcMain.handle(IPC_CHANNELS.livesReload, async (_event, sessionId) => {
+      await this.sessions.reload(sessionId);
+      this.stateHub.emit();
+    });
+    ipcMain.handle(IPC_CHANNELS.livesOpen, async (_event, channelId) => {
+      const channel = this.channels.getById(channelId);
+      if (!channel) {
+        return null;
+      }
+      const session = await this.sessions.openManually(channel);
+      this.stateHub.emit();
+      return session;
+    });
     ipcMain.handle(IPC_CHANNELS.logsList, () => this.logs.list());
     ipcMain.handle(IPC_CHANNELS.appSnapshot, async () => ({
       channels: this.channels.list(),

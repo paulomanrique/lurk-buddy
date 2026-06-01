@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { APP_NAME, BRAND_PRIMARY } from '../shared/constants.js';
 import { AppContext } from './app-context.js';
 
-const { app, BrowserWindow, nativeImage } = electron;
+const { app, BrowserWindow, Menu, nativeImage } = electron;
 const mainPreloadPath = join(__dirname, '../preload/index.js');
 let mainWindow: ElectronBrowserWindow | null = null;
 let appContext: AppContext | null = null;
@@ -81,6 +81,7 @@ function createWindow(): ElectronBrowserWindow {
 async function bootstrap(): Promise<void> {
   await app.whenReady();
   app.setName(APP_NAME);
+  Menu.setApplicationMenu(null);
   mainWindow = createWindow();
   appContext = new AppContext();
   appContext.registerIpc(mainWindow);

@@ -107,6 +107,8 @@ const api: LurkBuddyApi = {
     list: () => ipcRenderer.invoke(IPC_CHANNELS.livesList),
     activate: (sessionId) => ipcRenderer.invoke(IPC_CHANNELS.livesActivate, sessionId),
     close: (sessionId) => ipcRenderer.invoke(IPC_CHANNELS.livesClose, sessionId),
+    reload: (sessionId) => ipcRenderer.invoke(IPC_CHANNELS.livesReload, sessionId),
+    open: (channelId) => ipcRenderer.invoke(IPC_CHANNELS.livesOpen, channelId),
     setMuted: (sessionId, muted) => ipcRenderer.invoke(IPC_CHANNELS.livesSetMuted, sessionId, muted),
     layout: (sessionId, bounds) => ipcRenderer.invoke(IPC_CHANNELS.livesLayout, sessionId, bounds)
   },

@@ -288,6 +288,28 @@ input[type='checkbox'] { accent-color: var(--brand); }
   color: var(--brand);
 }
 
+.session-refresh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: color 0.15s;
+  opacity: 0;
+}
+
+.session-refresh svg {
+  width: 12px;
+  height: 12px;
+}
+
+.session-item:hover .session-refresh {
+  opacity: 1;
+}
+
+.session-refresh:hover {
+  color: var(--brand);
+}
+
 .session-close {
   font-size: 10px;
   color: var(--muted);

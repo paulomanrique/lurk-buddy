@@ -135,6 +135,46 @@ export class LiveSessionService {
     await this.syncViewVisibility();
   }
 
+  async reload(sessionId: string): Promise<void> {
+    const liveView = this.views.get(sessionId);
+    if (!liveView || liveView.view.webContents.isDestroyed()) {
+      return;
+    }
+    this.lastReloadAt.set(sessionId, Date.now());
+    this.logs.write('info', 'live-sessions', 'Manual reload of live tab', { sessionId });
+    try {
+      await liveView.view.webContents.reloadIgnoringCache();
+    } catch (error) {
+      this.logs.write('warn', 'live-sessions', 'Manual reload failed', {
+        sessionId,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }
+
+  async openManually(channel: Channel): Promise<LiveSession | null> {
+    let urls: string[] = [channel.url];
+    try {
+      const adapter = adapters[channel.platform];
+      const status = await adapter.getChannelStatus(channel);
+      urls = status.isLive && status.allWatchUrls?.length
+        ? status.allWatchUrls
+        : [adapter.buildWatchUrl(channel, status)];
+    } catch (error) {
+      this.logs.write('warn', 'live-sessions', 'Manual open status check failed, falling back to channel url', {
+        channelId: channel.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+
+    let firstSession: LiveSession | null = null;
+    for (const url of urls) {
+      const session = await this.ensureSession(channel, url);
+      firstSession ??= session;
+    }
+    return firstSession;
+  }
+
   setMuted(sessionId: string, muted: boolean): void {
     this.mutedState.set(sessionId, muted);
     const liveView = this.views.get(sessionId);

@@ -34,6 +34,8 @@ export interface LurkBuddyApi {
     list: () => Promise<LiveSession[]>;
     activate: (sessionId: string) => Promise<void>;
     close: (sessionId: string) => Promise<void>;
+    reload: (sessionId: string) => Promise<void>;
+    open: (channelId: string) => Promise<LiveSession | null>;
     setMuted: (sessionId: string, muted: boolean) => Promise<void>;
     layout: (sessionId: string | null, bounds: LiveViewBounds | null) => Promise<void>;
   };
@@ -66,6 +68,8 @@ export const IPC_CHANNELS = {
   livesList: 'lives:list',
   livesActivate: 'lives:activate',
   livesClose: 'lives:close',
+  livesReload: 'lives:reload',
+  livesOpen: 'lives:open',
   livesSetMuted: 'lives:set-muted',
   livesLayout: 'lives:layout',
   logsList: 'logs:list',
