@@ -22,15 +22,21 @@ export async function getInstagramLiveInfo(handle: string): Promise<InstagramLiv
 
   const igSession = electron.session.fromPartition(PLATFORM_PARTITIONS.instagram);
   const csrfToken = await readCookie(igSession, 'https://www.instagram.com', 'csrftoken');
+  const sessionId = await readCookie(igSession, 'https://www.instagram.com', 'sessionid');
+  dbg(`${username}: loggedIn=${Boolean(sessionId)} csrftoken=${Boolean(csrfToken)}`);
 
   const profile = await fetchProfile(igSession, username, csrfToken);
-  if (!profile) return null;
+  if (!profile) {
+    dbg(`${username}: no profile (not resolved / auth blocked) -> offline`);
+    return null;
+  }
 
   const nickname = profile.fullName ?? null;
 
   // Some responses surface the live broadcast inline on the user node.
   const inlineBroadcast = findBroadcastId(profile.userNode);
   if (inlineBroadcast) {
+    dbg(`${username}: live via profile node, broadcastId=${inlineBroadcast}`);
     return { broadcastId: inlineBroadcast, nickname };
   }
 
@@ -39,11 +45,19 @@ export async function getInstagramLiveInfo(handle: string): Promise<InstagramLiv
   if (profile.userId) {
     const storyBroadcast = await fetchStoryBroadcast(igSession, profile.userId, csrfToken);
     if (storyBroadcast) {
+      dbg(`${username}: live via story feed, broadcastId=${storyBroadcast}`);
       return { broadcastId: storyBroadcast, nickname };
     }
   }
 
+  dbg(`${username}: no broadcast found -> offline`);
   return null;
+}
+
+// Temporary diagnostics; prints to the main-process (dev:electron) console.
+// Enabled by default while IG/X detection is being tuned.
+function dbg(message: string): void {
+  console.log(`[ig-debug] ${message}`);
 }
 
 interface InstagramProfile {
@@ -61,6 +75,7 @@ async function fetchProfile(
   const response = await igSession.fetch(url, {
     headers: igHeaders(csrfToken)
   });
+  dbg(`${username}: web_profile_info status=${response.status}`);
 
   if (response.status === 401 || response.status === 403 || response.status === 404) {
     return null;
@@ -78,6 +93,8 @@ async function fetchProfile(
   }
 
   const record = userNode as Record<string, unknown>;
+  const liveKeys = Object.keys(record).filter((k) => k.toLowerCase().includes('live') || k.toLowerCase().includes('broadcast'));
+  dbg(`${username}: userId=${String(record.id ?? '?')} liveKeys=${JSON.stringify(liveKeys)}`);
   return {
     userId: typeof record.id === 'string' ? record.id : null,
     fullName: typeof record.full_name === 'string' && record.full_name ? record.full_name : null,
@@ -94,13 +111,19 @@ async function fetchStoryBroadcast(
   const response = await igSession.fetch(url, {
     headers: igHeaders(csrfToken)
   });
+  dbg(`story feed status=${response.status}`);
 
   if (!response.ok) {
     return null;
   }
 
   const payload = (await response.json().catch(() => null)) as unknown;
-  return findBroadcastId(payload);
+  const broadcastId = findBroadcastId(payload);
+  if (!broadcastId && payload && typeof payload === 'object') {
+    const top = payload as Record<string, unknown>;
+    dbg(`story feed topKeys=${JSON.stringify(Object.keys(top))} broadcast=${JSON.stringify(top.broadcast ?? null)?.slice(0, 200)}`);
+  }
+  return broadcastId;
 }
 
 function igHeaders(csrfToken: string | null): Record<string, string> {
