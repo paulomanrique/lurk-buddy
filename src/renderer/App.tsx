@@ -10,6 +10,14 @@ import logoCircleUrl from './assets/logo-circle.svg';
 const initialForm = { value: '', displayName: '' };
 const POLL_TICK_S = Math.round(POLL_TICK_MS / 1000);
 
+// Platforms that require a signed-in embedded session before lives can be
+// detected or watched.
+const LOGIN_PLATFORMS = ['instagram', 'twitter'] as const;
+const PLATFORM_LABELS: Record<(typeof LOGIN_PLATFORMS)[number], string> = {
+  instagram: 'Instagram',
+  twitter: 'X'
+};
+
 function usePollCountdown() {
   const [seconds, setSeconds] = useState(POLL_TICK_S);
   const lastResetRef = useRef(Date.now());
@@ -35,6 +43,7 @@ export function App() {
   const {
     channels,
     sessions,
+    authStatus,
     settings,
     updater,
     pollingRunning,
@@ -200,6 +209,13 @@ export function App() {
     }
   }
 
+  async function handleLoginPlatform(platform: (typeof LOGIN_PLATFORMS)[number]) {
+    const channel = channels.find((entry) => entry.platform === platform);
+    if (!channel) return;
+    trackEvent('platform_login_opened', { platform });
+    await handleOpenChannel(channel.id);
+  }
+
   async function handleSelectSession(sessionId: string) {
     const session = sessions.find((entry) => entry.id === sessionId);
     setPanelOnly(false);
@@ -309,6 +325,10 @@ export function App() {
     });
     await window.lurkBuddy.app.openLatestRelease();
   }
+
+  const loginNeeded = LOGIN_PLATFORMS.filter(
+    (platform) => channels.some((channel) => channel.platform === platform) && authStatus[platform] === false
+  );
 
   const showDashboard = panelOnly || !selectedSession;
   const liveRecovering = sessions.some((session) => session.status === 'recovering');
@@ -611,6 +631,21 @@ export function App() {
         {/* Body */}
         {showDashboard ? (
           <div className="main-body">
+
+            {/* ── LOGIN REQUIRED ── */}
+            {loginNeeded.map((platform) => (
+              <div className="login-required" key={platform}>
+                <svg className="login-required-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                  <path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                </svg>
+                <span className="login-required-text">
+                  <strong>{PLATFORM_LABELS[platform]}</strong> needs you to sign in before its lives can be detected or opened.
+                </span>
+                <button className="primary-btn" onClick={() => void handleLoginPlatform(platform)}>
+                  log in to {PLATFORM_LABELS[platform]}
+                </button>
+              </div>
+            ))}
 
             {/* ── ADD CHANNEL ── */}
             <div className="section-block">

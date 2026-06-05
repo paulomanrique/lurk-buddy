@@ -40,4 +40,12 @@ export const PLATFORM_HOSTS: Record<Platform, string[]> = {
   twitter: ['twitter.com', 'www.twitter.com', 'x.com', 'www.x.com', 'mobile.twitter.com']
 };
 
+// Platforms that can only be detected/watched while signed in. The poller and UI
+// use these to surface a "login required" prompt; login state is inferred from
+// the presence of the auth cookie in the platform's persisted session partition.
+export const PLATFORM_LOGIN: Partial<Record<Platform, { url: string; cookie: string }>> = {
+  instagram: { url: 'https://www.instagram.com', cookie: 'sessionid' },
+  twitter: { url: 'https://x.com', cookie: 'auth_token' }
+};
+
 export const POLL_TICK_MS = 60_000;

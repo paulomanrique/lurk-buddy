@@ -517,6 +517,34 @@ input[type='checkbox'] { accent-color: var(--brand); }
   overflow: hidden;
 }
 
+.login-required {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 98, 104, 0.42);
+  background: rgba(255, 98, 104, 0.08);
+}
+
+.login-required-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--brand);
+  flex-shrink: 0;
+}
+
+.login-required-text {
+  flex: 1;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.login-required-text strong {
+  color: var(--brand);
+}
+
 .sec-header {
   display: flex;
   align-items: center;

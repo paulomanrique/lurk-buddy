@@ -4,10 +4,10 @@ import type { BrowserWindow } from 'electron';
 import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { createDatabase, resolveDatabasePath } from '../db/database.js';
-import { PLATFORM_PARTITIONS } from '../shared/constants.js';
+import { PLATFORM_LOGIN, PLATFORM_PARTITIONS } from '../shared/constants.js';
 import { IPC_CHANNELS } from '../shared/ipc.js';
 import { channelTransferListSchema, settingsPatchSchema } from '../shared/schemas.js';
-import type { ShutdownState } from '../shared/types.js';
+import type { Platform, PlatformAuthStatus, ShutdownState } from '../shared/types.js';
 import { ChannelRepository } from '../modules/channels/channel-repository.js';
 import { ChannelService, ChannelValidationError } from '../modules/channels/channel-service.js';
 import { LiveSessionRepository } from '../modules/live-sessions/live-session-repository.js';
@@ -199,6 +199,7 @@ export class AppContext {
     ipcMain.handle(IPC_CHANNELS.appSnapshot, async () => ({
       channels: this.channels.list(),
       sessions: this.sessions.activeList(),
+      authStatus: await this.computePlatformAuthStatus(),
       settings: this.settings.get(),
       updater: this.updater.getState(),
       logs: this.logs.list(),
@@ -236,6 +237,24 @@ export class AppContext {
     mainWindow.once('closed', () => {
       unsubscribeStateHub();
     });
+  }
+
+  private async computePlatformAuthStatus(): Promise<PlatformAuthStatus> {
+    const status: PlatformAuthStatus = {};
+    await Promise.all(
+      (Object.entries(PLATFORM_LOGIN) as Array<[Platform, { url: string; cookie: string }]>).map(
+        async ([platform, cfg]) => {
+          try {
+            const partitionSession = electron.session.fromPartition(PLATFORM_PARTITIONS[platform]);
+            const cookies = await partitionSession.cookies.get({ url: cfg.url, name: cfg.cookie });
+            status[platform] = cookies.length > 0;
+          } catch {
+            status[platform] = false;
+          }
+        }
+      )
+    );
+    return status;
   }
 
   beginShutdown(): Promise<void> {

@@ -120,9 +120,12 @@ export interface UpdateChannelInput {
   enabled?: boolean;
 }
 
+export type PlatformAuthStatus = Partial<Record<Platform, boolean>>;
+
 export interface RendererSnapshot {
   channels: Channel[];
   sessions: LiveSession[];
+  authStatus: PlatformAuthStatus;
   settings: AppSettings;
   updater: UpdaterState;
   logs: EventLog[];
