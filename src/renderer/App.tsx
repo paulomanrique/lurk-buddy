@@ -105,6 +105,10 @@ export function App() {
   async function handleCreateChannel(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setCreateError(null);
+    if (!form.value.trim()) {
+      setCreateError('Enter a channel URL or handle.');
+      return;
+    }
     try {
       await window.lurkBuddy.channels.create({
         value: form.value,
@@ -650,7 +654,12 @@ export function App() {
                       }}
                     />
                   </div>
-                  <button className="primary-btn" type="submit" style={{ alignSelf: 'flex-end' }}>
+                  <button
+                    className="primary-btn"
+                    type="submit"
+                    style={{ alignSelf: 'flex-end' }}
+                    disabled={!form.value.trim()}
+                  >
                     + add
                   </button>
                 </form>

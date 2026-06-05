@@ -9,7 +9,7 @@ import { IPC_CHANNELS } from '../shared/ipc.js';
 import { channelTransferListSchema, settingsPatchSchema } from '../shared/schemas.js';
 import type { ShutdownState } from '../shared/types.js';
 import { ChannelRepository } from '../modules/channels/channel-repository.js';
-import { ChannelService } from '../modules/channels/channel-service.js';
+import { ChannelService, ChannelValidationError } from '../modules/channels/channel-service.js';
 import { LiveSessionRepository } from '../modules/live-sessions/live-session-repository.js';
 import { LiveSessionService } from '../modules/live-sessions/live-session-service.js';
 import { LogService } from '../modules/logging/log-service.js';
@@ -92,6 +92,10 @@ export class AppContext {
         this.stateHub.emit();
         return result;
       } catch (error) {
+        if (error instanceof ChannelValidationError) {
+          // User input problem, not a storage failure — surface the message as-is.
+          throw new Error(error.message);
+        }
         const dbPath = resolveDatabasePath();
         this.logs.write('error', 'channels', 'Failed to create channel', {
           input,

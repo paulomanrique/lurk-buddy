@@ -13,6 +13,15 @@ import { resolveYouTubeHandleFromChannelId } from '../platform-api/youtube-api.j
 import { ChannelRepository } from './channel-repository.js';
 import { LogService } from '../logging/log-service.js';
 
+/** Thrown when user-supplied channel input is empty or cannot be parsed into a
+ *  real channel. Surfaced verbatim to the UI (not mapped to a generic DB error). */
+export class ChannelValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ChannelValidationError';
+  }
+}
+
 export class ChannelService {
   constructor(
     private readonly repository: ChannelRepository,
@@ -154,10 +163,16 @@ export class ChannelService {
     platform: Channel['platform'];
     normalized: ReturnType<(typeof adapters)[Channel['platform']]['normalizeInput']>;
   }> {
-    const parsed = createChannelSchema.parse(input);
+    const parsed = this.parseCreateInput(input);
+    if (!parsed.value.trim()) {
+      throw new ChannelValidationError('Enter a channel URL or handle.');
+    }
     const platform = parsed.platform ?? this.detectPlatform(parsed.value);
     const adapter = adapters[platform];
     let normalized = adapter.normalizeInput(parsed.value);
+    if (!normalized.channelKey.trim()) {
+      throw new ChannelValidationError('That doesn’t look like a valid channel URL or handle.');
+    }
 
     if (platform === 'youtube') {
       const stripped = normalized.channelKey.replace(/^@/, '');
@@ -170,6 +185,14 @@ export class ChannelService {
     }
 
     return { parsed, platform, normalized };
+  }
+
+  private parseCreateInput(input: CreateChannelInput | ChannelTransferItem): CreateChannelInput {
+    const result = createChannelSchema.safeParse(input);
+    if (!result.success) {
+      throw new ChannelValidationError('Enter a channel URL or handle.');
+    }
+    return result.data;
   }
 
   private detectPlatform(value: string): Channel['platform'] {
