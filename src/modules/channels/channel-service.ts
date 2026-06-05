@@ -177,6 +177,13 @@ export class ChannelService {
     if (normalized.includes('tiktok.com')) {
       return 'tiktok';
     }
+    if (normalized.includes('instagram.com')) {
+      return 'instagram';
+    }
+    // Match x.com only at a host boundary (^, // or .) so e.g. "vox.com" is not caught.
+    if (normalized.includes('twitter.com') || /(?:^|\/\/|\.)x\.com(?:\/|$|\?)/.test(normalized)) {
+      return 'twitter';
+    }
     if (normalized.includes('youtube.com') || normalized.includes('youtu.be') || normalized.startsWith('@')) {
       return 'youtube';
     }

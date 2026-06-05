@@ -4,10 +4,14 @@ import { TwitchAdapter } from './twitch/adapter.js';
 import { YouTubeAdapter } from './youtube/adapter.js';
 import { KickAdapter } from './kick/adapter.js';
 import { TikTokAdapter } from './tiktok/adapter.js';
+import { InstagramAdapter } from './instagram/adapter.js';
+import { TwitterAdapter } from './twitter/adapter.js';
 
 export const adapters: Record<Platform, PlatformAdapter> = {
   twitch: new TwitchAdapter(),
   youtube: new YouTubeAdapter(),
   kick: new KickAdapter(),
-  tiktok: new TikTokAdapter()
+  tiktok: new TikTokAdapter(),
+  instagram: new InstagramAdapter(),
+  twitter: new TwitterAdapter()
 };

@@ -869,6 +869,8 @@ input[type='checkbox'] { accent-color: var(--brand); }
 .badge-icon-youtube { color: #ff7070; }
 .badge-icon-kick { color: #4cd68a; }
 .badge-icon-tiktok { color: #25f4ee; }
+.badge-icon-instagram { color: #e1306c; }
+.badge-icon-twitter { color: #1d9bf0; }
 
 /* ── PLATFORM BADGE ──────────────────────────────── */
 
@@ -912,6 +914,18 @@ input[type='checkbox'] { accent-color: var(--brand); }
   border: 1px solid rgba(254, 44, 85, 0.3);
 }
 
+.badge-instagram {
+  background: rgba(225, 48, 108, 0.12);
+  color: #e1306c;
+  border: 1px solid rgba(225, 48, 108, 0.25);
+}
+
+.badge-twitter {
+  background: rgba(29, 155, 240, 0.12);
+  color: #1d9bf0;
+  border: 1px solid rgba(29, 155, 240, 0.25);
+}
+
 /* ── SESSION BADGE (smaller, no border) ─────────── */
 
 .session-badge {
@@ -944,6 +958,18 @@ input[type='checkbox'] { accent-color: var(--brand); }
 .session-badge.badge-tiktok {
   background: rgba(37, 244, 238, 0.18);
   color: #25f4ee;
+  border: none;
+}
+
+.session-badge.badge-instagram {
+  background: rgba(225, 48, 108, 0.18);
+  color: #e1306c;
+  border: none;
+}
+
+.session-badge.badge-twitter {
+  background: rgba(29, 155, 240, 0.18);
+  color: #1d9bf0;
   border: none;
 }
 

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Platform } from './types.js';
 
-export const platformSchema = z.enum(['twitch', 'youtube', 'kick', 'tiktok'] satisfies [Platform, ...Platform[]]);
+export const platformSchema = z.enum(['twitch', 'youtube', 'kick', 'tiktok', 'instagram', 'twitter'] satisfies [Platform, ...Platform[]]);
 
 export const createChannelSchema = z.object({
   platform: platformSchema.optional(),
