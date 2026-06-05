@@ -32,8 +32,9 @@ export class InstagramAdapter extends BasePlatformAdapter {
 
     return {
       isLive: true,
-      // Best-effort live URL; the live ring is also reachable from the profile.
-      watchUrl: `https://www.instagram.com/${channel.channelKey}/live/`,
+      // The `broadcast_id` query param is required — without it Instagram
+      // redirects /<user>/live/ back to the profile home.
+      watchUrl: `https://www.instagram.com/${channel.channelKey}/live/?broadcast_id=${info.broadcastId}`,
       title: info.nickname ? `${info.nickname} is live` : `${channel.displayName} is live`,
       raw: info
     };
