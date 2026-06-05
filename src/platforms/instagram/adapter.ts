@@ -3,44 +3,47 @@ import { BasePlatformAdapter, type NormalizedChannel } from '../base.js';
 import type { Channel, ChannelStatus } from '../../shared/types.js';
 import { getInstagramLiveInfo } from '../../modules/platform-api/instagram-api.js';
 
-// Instagram live renders a "tap to play" overlay that gates playback until the
-// viewer clicks. Since the tab is loaded without a real user gesture, we dismiss
-// it in-page: poll for the <video>, click the player area to clear the overlay,
-// and call play(). The loop stops once the video is actually playing and bails
-// after a bounded number of attempts. Re-runs on each document load (reloads).
-const TAP_TO_PLAY_SCRIPT = `
-(() => {
-  if (window.__lbTapToPlay) return;
-  window.__lbTapToPlay = true;
-  let tries = 0;
-  const fire = (el) => {
-    if (!el) return;
-    const o = { bubbles: true, cancelable: true, view: window, button: 0, clientX: 1, clientY: 1 };
-    try {
-      el.dispatchEvent(new PointerEvent('pointerdown', o));
-      el.dispatchEvent(new MouseEvent('mousedown', o));
-      el.dispatchEvent(new PointerEvent('pointerup', o));
-      el.dispatchEvent(new MouseEvent('mouseup', o));
-      el.dispatchEvent(new MouseEvent('click', o));
-    } catch (e) {}
-  };
-  const playing = (v) => v && !v.paused && !v.ended && v.readyState >= 2;
-  const tick = () => {
-    tries++;
-    const video = document.querySelector('video');
-    if (playing(video)) return;
-    if (video) {
-      try { video.play(); } catch (e) {}
-      fire(video.parentElement || video);
+// Reads the current player state from the page: viewport size (for click
+// coordinates) and whether a <video> is present and already playing.
+const PLAYER_STATE_SCRIPT = `(() => {
+  const v = document.querySelector('video');
+  let x = Math.floor(window.innerWidth / 2);
+  let y = Math.floor(window.innerHeight / 2);
+  if (v) {
+    const r = v.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) {
+      x = Math.floor(r.left + r.width / 2);
+      y = Math.floor(r.top + r.height / 2);
     }
-    if (tries < 40 && !playing(video)) setTimeout(tick, 500);
+  }
+  return {
+    w: window.innerWidth,
+    h: window.innerHeight,
+    x: x,
+    y: y,
+    hasVideo: !!v,
+    playing: !!(v && !v.paused && !v.ended && v.readyState >= 2)
   };
-  tick();
-})();
-`;
+})()`;
+
+interface PlayerState {
+  w: number;
+  h: number;
+  x: number;
+  y: number;
+  hasVideo: boolean;
+  playing: boolean;
+}
+
+const TAP_MAX_ATTEMPTS = 30;
+const TAP_INTERVAL_MS = 700;
 
 export class InstagramAdapter extends BasePlatformAdapter {
   readonly platform = 'instagram' as const;
+
+  // Tracks webContents that already have a dismiss loop running, so reloads
+  // don't stack concurrent loops.
+  private readonly dismissing = new WeakSet<WebContents>();
 
   normalizeInput(input: string): NormalizedChannel {
     const value = input.trim();
@@ -82,11 +85,43 @@ export class InstagramAdapter extends BasePlatformAdapter {
   }
 
   override attachSessionObservers(webContents: WebContents): void {
-    const dismissOverlay = () => {
-      void webContents.executeJavaScript(TAP_TO_PLAY_SCRIPT).catch(() => {});
-    };
     // Run for the page that just loaded, and again after any reload/navigation.
-    dismissOverlay();
-    webContents.on('dom-ready', dismissOverlay);
+    void this.dismissTapToPlay(webContents);
+    webContents.on('dom-ready', () => void this.dismissTapToPlay(webContents));
+  }
+
+  // Instagram live gates playback behind a "tap to play" overlay that only
+  // clears on a trusted user gesture (a synthetic JS click is ignored). We send
+  // a real mouse click at the centre of the view via sendInputEvent, retrying
+  // until the <video> reports it is playing or we exhaust the attempt budget.
+  private async dismissTapToPlay(webContents: WebContents): Promise<void> {
+    if (this.dismissing.has(webContents)) return;
+    this.dismissing.add(webContents);
+    try {
+      for (let attempt = 0; attempt < TAP_MAX_ATTEMPTS; attempt += 1) {
+        if (webContents.isDestroyed()) return;
+
+        let state: PlayerState | null = null;
+        try {
+          state = (await webContents.executeJavaScript(PLAYER_STATE_SCRIPT)) as PlayerState;
+        } catch {
+          // Page is mid-navigation; try again next tick.
+        }
+
+        if (state?.playing) return;
+
+        // Only click once the view has real dimensions (an active, sized tab).
+        if (state && state.w > 1 && state.h > 1) {
+          const { x, y } = state;
+          webContents.sendInputEvent({ type: 'mouseMove', x, y });
+          webContents.sendInputEvent({ type: 'mouseDown', x, y, button: 'left', clickCount: 1 });
+          webContents.sendInputEvent({ type: 'mouseUp', x, y, button: 'left', clickCount: 1 });
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, TAP_INTERVAL_MS));
+      }
+    } finally {
+      this.dismissing.delete(webContents);
+    }
   }
 }
